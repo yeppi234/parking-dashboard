@@ -348,12 +348,9 @@ async function handleLogin() {
 
   try {
     const hashedPw = sha256(pw);
-
     const response = await fetch(`${PROXY_BASE}/login`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       credentials: 'include',
       body: `userId=${encodeURIComponent(id)}&userPwd=${hashedPw}`
     });
