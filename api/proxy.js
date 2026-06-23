@@ -1,34 +1,47 @@
 // api/proxy.js
 export default async function handler(req, res) {
-  // CORS 헤더 (credentials를 허용하려면 origin을 특정해야 함)
-  const origin = req.headers.origin || '*';
-  res.setHeader('Access-Control-Allow-Origin', origin);
+  // CORS 헤더 설정
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Cookie, X-Requested-With');
-  // 클라이언트가 Set-Cookie 헤더를 읽을 수 있도록 노출
-  res.setHeader('Access-Control-Expose-Headers', 'Set-Cookie');
 
+  // OPTIONS 요청 처리
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   try {
+    // 실제 대상 URL 생성
     const targetPath = req.url.replace(/^\/api\/proxy/, '');
     const targetUrl = `https://a17574.parkingweb.kr${targetPath}`;
 
-    // 클라이언트가 전송한 Cookie 헤더 (수동으로 넣을 예정)
+    // 쿠키 전달
     const cookieHeader = req.headers.cookie || '';
 
+    // ✅ POST body 처리 (중요!)
     let body = req.body;
-    if (req.method === 'POST' && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
-      const params = new URLSearchParams();
-      for (const [key, value] of Object.entries(req.body)) {
-        params.append(key, value);
+    if (req.method === 'POST') {
+      // body가 객체인 경우 URLSearchParams로 변환
+      if (typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(req.body)) {
+          // 배열인 경우 여러 번 추가
+          if (Array.isArray(value)) {
+            value.forEach(v => params.append(key, v));
+          } else {
+            params.append(key, value);
+          }
+        }
+        body = params.toString();
       }
-      body = params.toString();
     }
 
+    console.log('🔑 Proxy target:', targetUrl);
+    console.log('📦 Body:', body);
+    console.log('🍪 Cookie:', cookieHeader);
+
+    // 대상 서버로 요청 전달
     const response = await fetch(targetUrl, {
       method: req.method,
       headers: {
@@ -39,16 +52,13 @@ export default async function handler(req, res) {
       body: req.method === 'POST' ? body : undefined,
     });
 
-    // 🔑 서버가 내려준 Set-Cookie를 그대로 클라이언트에 전달
-    const setCookie = response.headers.get('set-cookie');
-    if (setCookie) {
-      res.setHeader('Set-Cookie', setCookie);
-    }
-
     const data = await response.text();
     res.status(response.status).send(data);
   } catch (error) {
     console.error('Proxy error:', error);
-    res.status(500).json({ error: 'Proxy error', details: error.message });
+    res.status(500).json({ 
+      error: 'Proxy error', 
+      details: error.message 
+    });
   }
 }
