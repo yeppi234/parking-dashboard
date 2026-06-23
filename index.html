@@ -325,6 +325,7 @@ async function fetchData() {
       String(today.getMonth() + 1).padStart(2, '0') +
       String(today.getDate()).padStart(2, '0');
 
+    // ✅ 쿠키 포함을 위해 credentials: 'include' 유지
     const response = await fetch(`${PROXY_BASE}/state/doListMst`, {
       method: 'POST',
       headers: {
