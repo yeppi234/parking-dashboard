@@ -282,7 +282,6 @@ async function handleLogin() {
   try {
     const hashedPw = sha256(pw);
 
-    // ✅ 로그인 요청을 프록시로!
     const response = await fetch(`${PROXY_BASE}/login`, {
       method: 'POST',
       headers: {
@@ -326,7 +325,6 @@ async function fetchData() {
       String(today.getMonth() + 1).padStart(2, '0') +
       String(today.getDate()).padStart(2, '0');
 
-    // ✅ 데이터 요청도 프록시로!
     const response = await fetch(`${PROXY_BASE}/state/doListMst`, {
       method: 'POST',
       headers: {
