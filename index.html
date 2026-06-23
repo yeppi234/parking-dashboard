@@ -366,6 +366,7 @@ const PROXY_BASE = 'https://parking-dashboard-beryl.vercel.app/api/proxy';
 // ⚙️ 설정: 잔여 금액 임계값
 // ============================================================
 const STORAGE_KEY = 'threshold_amount';
+const BALANCE_KEY = 'last_balance';
 let THRESHOLD_AMOUNT = parseInt(localStorage.getItem(STORAGE_KEY)) || 10000;
 
 // ============================================================
@@ -455,6 +456,14 @@ async function handleLogin() {
     if (response.ok || response.status === 302) {
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('mainContent').style.display = 'block';
+      
+      // localStorage에 저장된 잔액 있으면 우선 표시
+      const savedBalance = localStorage.getItem(BALANCE_KEY);
+      if (savedBalance !== null) {
+        currentBalance = parseInt(savedBalance);
+        updateBalanceDisplay(currentBalance);
+      }
+      
       await fetchBalance();
       fetchData();
       setInterval(async () => {
@@ -479,7 +488,6 @@ function handleLogout() {
   document.getElementById('mainContent').style.display = 'none';
   document.getElementById('loginError').style.display = 'none';
   sessionId = '';
-  currentBalance = 0;
 }
 
 // ============================================================
@@ -500,6 +508,7 @@ async function fetchBalance() {
       headers['Cookie'] = `JSESSIONID=${sessionId}`;
     }
 
+    // ✅ 차량 번호를 빈값으로 조회하면 오늘 입차한 모든 차량 목록이 나옴
     const listResponse = await fetch(`${PROXY_BASE}/discount/registration/listForDiscount`, {
       method: 'POST',
       headers: headers,
@@ -515,6 +524,7 @@ async function fetchBalance() {
     let balance = 0;
     
     if (listResult && listResult.length > 0) {
+      // 첫 번째 차량의 상세 정보에서 잔액 추출
       const detailResponse = await fetch(`${PROXY_BASE}/discount/registration/getForDiscount`, {
         method: 'POST',
         headers: headers,
@@ -534,11 +544,17 @@ async function fetchBalance() {
         }
       }
     } else {
-      // 차량이 없으면 "차량 없음" 표시 (0원으로 표시하지 않음)
-      const remainEl = document.getElementById('statRemain');
-      remainEl.textContent = '차량 없음';
-      remainEl.className = 'stat-value';
-      return;
+      // ✅ 차량이 없어도 localStorage에 저장된 값이 있으면 그대로 사용
+      const savedBalance = localStorage.getItem(BALANCE_KEY);
+      if (savedBalance !== null) {
+        balance = parseInt(savedBalance);
+      }
+      // 저장된 값이 없으면 0원
+    }
+    
+    // ✅ 조회 성공 시 localStorage에 저장
+    if (balance > 0) {
+      localStorage.setItem(BALANCE_KEY, balance.toString());
     }
     
     currentBalance = balance;
@@ -558,6 +574,12 @@ async function fetchBalance() {
     }
   } catch (error) {
     console.error('잔액 조회 실패:', error);
+    // ✅ 조회 실패 시 localStorage에 저장된 값 사용
+    const savedBalance = localStorage.getItem(BALANCE_KEY);
+    if (savedBalance !== null) {
+      currentBalance = parseInt(savedBalance);
+      updateBalanceDisplay(currentBalance);
+    }
   }
 }
 
