@@ -363,52 +363,43 @@
 const PROXY_BASE = 'https://parking-dashboard-beryl.vercel.app/api/proxy';
 
 // ============================================================
-// ⚙️ 설정: 잔여 금액 임계값
+// ⚙️ 설정
 // ============================================================
 const STORAGE_KEY = 'threshold_amount';
 const BALANCE_KEY = 'last_balance';
 let THRESHOLD_AMOUNT = parseInt(localStorage.getItem(STORAGE_KEY)) || 10000;
-
-// ============================================================
-// ✅ 세션 ID 저장 변수
-// ============================================================
 let sessionId = '';
 let lastToastShown = {};
 let currentBalance = 0;
 let balanceCheckCount = 0;
 
 // ============================================================
-// 🍞 토스트 알림 함수
+// 🍞 토스트 알림
 // ============================================================
 function showToast(title, message, type = 'warning') {
   const container = document.getElementById('toastContainer');
   const titleEl = document.getElementById('toastTitle');
   const msgEl = document.getElementById('toastMessage');
-  
   titleEl.textContent = title;
   msgEl.textContent = message;
   container.className = `toast-container show toast-${type}`;
-  
   clearTimeout(window.toastTimer);
   window.toastTimer = setTimeout(closeToast, 8000);
 }
-
 function closeToast() {
   document.getElementById('toastContainer').className = 'toast-container';
 }
 
 // ============================================================
-// ⚙️ 임계값 설정 모달
+// ⚙️ 임계값 설정
 // ============================================================
 function openThresholdModal() {
   document.getElementById('thresholdInput').value = THRESHOLD_AMOUNT;
   document.getElementById('thresholdModal').classList.add('show');
 }
-
 function closeThresholdModal() {
   document.getElementById('thresholdModal').classList.remove('show');
 }
-
 function saveThreshold() {
   const val = parseInt(document.getElementById('thresholdInput').value);
   if (val > 0) {
@@ -422,7 +413,7 @@ function saveThreshold() {
 }
 
 // ============================================================
-// 🔐 로그인 처리
+// 🔐 로그인
 // ============================================================
 async function handleLogin() {
   const id = document.getElementById('loginId').value;
@@ -439,9 +430,7 @@ async function handleLogin() {
     const hashedPw = sha256(pw);
     const response = await fetch(`${PROXY_BASE}/login`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       credentials: 'include',
       body: `userId=${encodeURIComponent(id)}&userPwd=${hashedPw}`
     });
@@ -449,36 +438,27 @@ async function handleLogin() {
     const setCookieHeader = response.headers.get('set-cookie');
     if (setCookieHeader) {
       const match = setCookieHeader.match(/JSESSIONID=([^;]+)/);
-      if (match) {
-        sessionId = match[1];
-        console.log('✅ 세션 ID 획득:', sessionId);
-      }
+      if (match) sessionId = match[1];
     }
 
     if (response.ok || response.status === 302) {
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('mainContent').style.display = 'block';
       
-      // 최초 1회 잔액 조회 (iframe 방식)
       try {
         await fetchBalance();
       } catch (e) {
-        console.warn('잔액 조회 실패, localStorage 값 사용:', e);
-        const savedBalance = localStorage.getItem(BALANCE_KEY);
-        if (savedBalance !== null) {
-          currentBalance = parseInt(savedBalance);
+        const saved = localStorage.getItem(BALANCE_KEY);
+        if (saved !== null) {
+          currentBalance = parseInt(saved);
           updateBalanceDisplay(currentBalance);
         }
       }
-      
       fetchData();
       setInterval(async () => {
         balanceCheckCount++;
-        // 1분에 한 번씩 잔액 갱신
         if (balanceCheckCount % 6 === 0) {
-          try {
-            await fetchBalance();
-          } catch (e) {}
+          try { await fetchBalance(); } catch (e) {}
         }
         fetchData();
       }, 10000);
@@ -491,7 +471,6 @@ async function handleLogin() {
     errorEl.style.display = 'block';
   }
 }
-
 function handleLogout() {
   document.getElementById('loginOverlay').style.display = 'flex';
   document.getElementById('mainContent').style.display = 'none';
@@ -501,80 +480,55 @@ function handleLogout() {
 }
 
 // ============================================================
-// 💰 계정 잔여 금액 조회 (iframe 방식 - 할인등록 페이지에서 추출)
+// 💰 잔액 조회 (개인정보 관리 페이지 iframe)
 // ============================================================
 async function fetchBalance() {
-  return new Promise((resolve, reject) => {
-    try {
-      // 1. 숨겨진 iframe으로 할인등록 페이지 로드
-      const iframe = document.createElement('iframe');
-      iframe.src = 'https://a17574.parkingweb.kr/discount/registration';
-      iframe.style.cssText = 'position:absolute;width:0;height:0;border:0;visibility:hidden;';
-      document.body.appendChild(iframe);
+  return new Promise((resolve) => {
+    const iframe = document.createElement('iframe');
+    iframe.src = 'https://a17574.parkingweb.kr/member/myAccount';
+    iframe.style.cssText = 'position:absolute;width:0;height:0;border:0;visibility:hidden;';
+    document.body.appendChild(iframe);
 
-      // 2. iframe 로드 완료 후 잔액 추출
-      let resolved = false;
-      const timeoutId = setTimeout(() => {
-        if (!resolved) {
-          resolved = true;
-          iframe.remove();
-          console.warn('iframe 로드 타임아웃 (5초)');
-          reject(new Error('iframe timeout'));
-        }
-      }, 5000);
+    const timeoutId = setTimeout(() => {
+      iframe.remove();
+      resolve(0);
+    }, 5000);
 
-      iframe.onload = function() {
-        try {
-          if (resolved) return;
-          resolved = true;
-          clearTimeout(timeoutId);
-          
-          const doc = iframe.contentDocument || iframe.contentWindow.document;
-          const el = doc.getElementById('lblRemainTimeCharge');
-          
-          if (el) {
-            const raw = el.textContent.replace(/,/g, '').trim();
-            const val = parseInt(raw) || 0;
-            currentBalance = val;
-            updateBalanceDisplay(val);
-            localStorage.setItem(BALANCE_KEY, val.toString());
-            
-            // 잔액 알림 체크
-            if (val > 0 && val < THRESHOLD_AMOUNT) {
-              const now = Date.now();
-              const lastShown = lastToastShown['account'] || 0;
-              if (now - lastShown > 5 * 60 * 1000) {
-                lastToastShown['account'] = now;
-                showToast(
-                  '⚠️ 계정 잔액 부족',
-                  `현재 잔여 금액이 ${val.toLocaleString()}원 입니다. 충전이 필요합니다. (임계값: ${THRESHOLD_AMOUNT.toLocaleString()}원)`,
-                  'danger'
-                );
-              }
+    iframe.onload = function() {
+      clearTimeout(timeoutId);
+      try {
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        const el = doc.getElementById('lblRemainTimeCharge') || 
+                   doc.querySelector('.remain-amount') ||
+                   doc.querySelector('[id*="remain"]');
+        if (el) {
+          const raw = el.textContent.replace(/,/g, '').trim();
+          const val = parseInt(raw) || 0;
+          currentBalance = val;
+          updateBalanceDisplay(val);
+          localStorage.setItem(BALANCE_KEY, val.toString());
+          if (val > 0 && val < THRESHOLD_AMOUNT) {
+            const now = Date.now();
+            const lastShown = lastToastShown['account'] || 0;
+            if (now - lastShown > 5 * 60 * 1000) {
+              lastToastShown['account'] = now;
+              showToast(
+                '⚠️ 계정 잔액 부족',
+                `현재 잔여 금액이 ${val.toLocaleString()}원 입니다. 충전이 필요합니다. (임계값: ${THRESHOLD_AMOUNT.toLocaleString()}원)`,
+                'danger'
+              );
             }
-            resolve(val);
-          } else {
-            resolve(0);
           }
-        } catch (e) {
-          console.error('iframe 잔액 추출 오류:', e);
-          reject(e);
-        } finally {
-          iframe.remove();
+          resolve(val);
+        } else {
+          resolve(0);
         }
-      };
-
-      iframe.onerror = function(e) {
-        if (!resolved) {
-          resolved = true;
-          clearTimeout(timeoutId);
-          iframe.remove();
-          reject(e);
-        }
-      };
-    } catch (e) {
-      reject(e);
-    }
+      } catch (e) {
+        resolve(0);
+      } finally {
+        iframe.remove();
+      }
+    };
   });
 }
 
@@ -588,7 +542,7 @@ function updateBalanceDisplay(balance) {
 }
 
 // ============================================================
-// 📊 데이터 가져오기
+// 📊 데이터 가져오기 + 할인 시간 합산
 // ============================================================
 async function fetchData() {
   try {
@@ -597,13 +551,8 @@ async function fetchData() {
       String(today.getMonth() + 1).padStart(2, '0') +
       String(today.getDate()).padStart(2, '0');
 
-    const headers = {
-      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      'X-Requested-With': 'XMLHttpRequest',
-    };
-    if (sessionId) {
-      headers['Cookie'] = `JSESSIONID=${sessionId}`;
-    }
+    const headers = { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest' };
+    if (sessionId) headers['Cookie'] = `JSESSIONID=${sessionId}`;
 
     const response = await fetch(`${PROXY_BASE}/state/doListMst`, {
       method: 'POST',
@@ -625,15 +574,14 @@ async function fetchData() {
     const result = await response.json();
     const rawData = result.data || [];
     
+    // 차량별 데이터 집계
     const carMap = new Map();
-    
     for (const row of rawData) {
       const carNo = row.carno;
       if (!carNo) continue;
-      
       if (!carMap.has(carNo)) {
         carMap.set(carNo, {
-          carNo: carNo,
+          carNo,
           totalDiscountTime: 0,
           totalAmount: 0,
           entryDate: row.entry_date || '',
@@ -643,37 +591,24 @@ async function fetchData() {
           discountTimeStrings: []
         });
       }
-      
       const car = carMap.get(carNo);
       
+      // 할인 시간(분) 추출
       let timeMinutes = 0;
       const dcTime = row.dc_time || '0';
-      const timeMatch = dcTime.match(/\(([\d.]+)\)/);
-      if (timeMatch) {
-        timeMinutes = parseFloat(timeMatch[1]) || 0;
-      } else {
-        const hourMatch = dcTime.match(/(\d+)시간/);
-        const minMatch = dcTime.match(/(\d+)분/);
-        if (hourMatch) timeMinutes += parseInt(hourMatch[1]) * 60;
-        if (minMatch) timeMinutes += parseInt(minMatch[1]);
-      }
+      const match = dcTime.match(/\(([\d.]+)\)/);
+      if (match) timeMinutes = parseFloat(match[1]) || 0;
       
       const amount = (parseInt(row.used_basic) || 0) + (parseInt(row.used_charge) || 0);
-      
       car.totalDiscountTime += timeMinutes;
       car.totalAmount += amount;
-      
-      if (row.discount_name) {
-        car.discountNames.push(row.discount_name);
-        const timeStr = dcTime.replace(/\(.*\)/, '').trim() || '0분';
-        if (timeStr) car.discountTimeStrings.push(timeStr);
-      }
-      
+      if (row.discount_name) car.discountNames.push(row.discount_name);
       if (row.entry_date) car.entryDate = row.entry_date;
       if (row.id) car.entryId = row.id;
       if (row.paid_stat) car.paidStat = row.paid_stat;
     }
 
+    // 상세 정보 조회 및 여유시간 계산
     const detailedCars = [];
     for (const [carNo, car] of carMap) {
       if (car.paidStat === '10') {
@@ -694,15 +629,10 @@ async function fetchData() {
           method: 'POST',
           headers: headers,
           credentials: 'include',
-          body: new URLSearchParams({
-            id: car.entryId,
-            member_id: 'oasis_g'
-          })
+          body: new URLSearchParams({ id: car.entryId, member_id: 'oasis_g' })
         });
-        
         const detail = await detailResponse.json();
         const parkEntry = detail.parkEntry || {};
-        
         const entryDate = parkEntry.dtInDate || car.entryDate;
         let parkingMinutes = 0;
         if (entryDate) {
@@ -717,17 +647,15 @@ async function fetchData() {
           const now = new Date();
           parkingMinutes = Math.floor((now - entry) / 60000);
         }
-        
         const remainTime = Math.max(0, parkingMinutes - car.totalDiscountTime);
         const statusText = remainTime <= 0 ? '미출차 (초과)' : '미출차';
         const statusClass = remainTime <= 0 ? 'status-pending' : 'status-pending';
-        
         detailedCars.push({
           ...car,
-          parkingMinutes: parkingMinutes,
-          remainTime: remainTime,
-          statusText: statusText,
-          statusClass: statusClass,
+          parkingMinutes,
+          remainTime,
+          statusText,
+          statusClass,
           totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
           totalAmountDisplay: car.totalAmount > 0 ? car.totalAmount.toLocaleString() + '원' : '무료'
         });
@@ -759,17 +687,14 @@ async function fetchData() {
 }
 
 // ============================================================
-// 🖥️ 데이터 렌더링
+// 🖥️ 렌더링
 // ============================================================
 function renderData(data) {
-  const total = data.length;
-
-  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statTotal').textContent = data.length;
   document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
 
   const tbody = document.getElementById('tableBody');
   tbody.innerHTML = '';
-
   if (!data || data.length === 0) {
     tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">📭 등록 내역이 없습니다.</td></tr>';
     return;
@@ -777,27 +702,15 @@ function renderData(data) {
 
   data.forEach((row, idx) => {
     const tr = document.createElement('tr');
-    
     let remainClass = '';
-    if (row.paidStat === '10') {
-      remainClass = '';
-    } else if (row.remainTime <= 0) {
-      remainClass = 'highlight-red';
-    } else if (row.remainTime <= 30) {
-      remainClass = 'highlight-orange';
-    } else {
-      remainClass = 'highlight-green';
-    }
+    if (row.paidStat === '10') remainClass = '';
+    else if (row.remainTime <= 0) remainClass = 'highlight-red';
+    else if (row.remainTime <= 30) remainClass = 'highlight-orange';
+    else remainClass = 'highlight-green';
     
     const parkingDisplay = row.paidStat === '10' ? '-' : formatTime(row.parkingMinutes);
     const remainDisplay = row.paidStat === '10' ? '-' : formatTime(row.remainTime);
-    
-    let discountDisplay = '-';
-    if (row.totalDiscountTime > 0) {
-      discountDisplay = formatTime(row.totalDiscountTime);
-    } else if (row.discountNames && row.discountNames.length > 0) {
-      discountDisplay = row.discountNames.join(' + ');
-    }
+    const discountDisplay = row.totalDiscountTime > 0 ? formatTime(row.totalDiscountTime) : (row.discountNames.length > 0 ? row.discountNames.join(' + ') : '-');
 
     tr.innerHTML = `
       <td>${idx + 1}</td>
@@ -815,7 +728,7 @@ function renderData(data) {
 }
 
 // ============================================================
-// 🔧 시간 포맷
+// 🔧 유틸
 // ============================================================
 function formatTime(minutes) {
   if (minutes <= 0) return '0분';
@@ -826,7 +739,6 @@ function formatTime(minutes) {
   if (mins > 0) result += mins + '분';
   return result.trim() || '0분';
 }
-
 function fncDatetimeFormat(dateStr) {
   if (!dateStr) return '-';
   const date = dateStr.substring(0, 8);
@@ -834,14 +746,8 @@ function fncDatetimeFormat(dateStr) {
   return date.substring(0,4) + '-' + date.substring(4,6) + '-' + date.substring(6,8) + ' ' +
          time.substring(0,2) + ':' + time.substring(2,4) + ':' + time.substring(4,6);
 }
-
-// ============================================================
-// 🔐 SHA-256
-// ============================================================
 function sha256(message) {
-  function rightRotate(value, amount) {
-    return (value >>> amount) | (value << (32 - amount));
-  }
+  function rightRotate(value, amount) { return (value >>> amount) | (value << (32 - amount)); }
   const msgBytes = new TextEncoder().encode(message);
   const msgLen = msgBytes.length;
   const bitLen = msgLen * 8;
@@ -852,51 +758,30 @@ function sha256(message) {
   bytes[msgLen] = 0x80;
   const view = new DataView(bytes.buffer);
   view.setUint32(totalLen - 4, bitLen, false);
-
-  const K = [
-    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
-  ];
-
-  let h0 = 0x6a09e667, h1 = 0xbb67ae85, h2 = 0x3c6ef372, h3 = 0xa54ff53a;
-  let h4 = 0x510e527f, h5 = 0x9b05688c, h6 = 0x1f83d9ab, h7 = 0x5be0cd19;
-
-  for (let i = 0; i < bytes.length; i += 64) {
-    const w = new Uint32Array(64);
-    for (let j = 0; j < 16; j++) {
-      w[j] = (bytes[i + j * 4] << 24) | (bytes[i + j * 4 + 1] << 16) |
-        (bytes[i + j * 4 + 2] << 8) | bytes[i + j * 4 + 3];
+  const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  let h0=0x6a09e667,h1=0xbb67ae85,h2=0x3c6ef372,h3=0xa54ff53a,h4=0x510e527f,h5=0x9b05688c,h6=0x1f83d9ab,h7=0x5be0cd19;
+  for (let i=0;i<bytes.length;i+=64) {
+    const w=new Uint32Array(64);
+    for (let j=0;j<16;j++) w[j]=(bytes[i+j*4]<<24)|(bytes[i+j*4+1]<<16)|(bytes[i+j*4+2]<<8)|bytes[i+j*4+3];
+    for (let j=16;j<64;j++) {
+      const s0=rightRotate(w[j-15],7)^rightRotate(w[j-15],18)^(w[j-15]>>>3);
+      const s1=rightRotate(w[j-2],17)^rightRotate(w[j-2],19)^(w[j-2]>>>10);
+      w[j]=(w[j-16]+s0+w[j-7]+s1)|0;
     }
-    for (let j = 16; j < 64; j++) {
-      const s0 = rightRotate(w[j - 15], 7) ^ rightRotate(w[j - 15], 18) ^ (w[j - 15] >>> 3);
-      const s1 = rightRotate(w[j - 2], 17) ^ rightRotate(w[j - 2], 19) ^ (w[j - 2] >>> 10);
-      w[j] = (w[j - 16] + s0 + w[j - 7] + s1) | 0;
+    let a=h0,b=h1,c=h2,d=h3,e=h4,f=h5,g=h6,h=h7;
+    for (let j=0;j<64;j++) {
+      const S1=rightRotate(e,6)^rightRotate(e,11)^rightRotate(e,25);
+      const ch=(e&f)^(~e&g);
+      const temp1=(h+S1+ch+K[j]+w[j])|0;
+      const S0=rightRotate(a,2)^rightRotate(a,13)^rightRotate(a,22);
+      const maj=(a&b)^(a&c)^(b&c);
+      const temp2=(S0+maj)|0;
+      h=g;g=f;f=e;e=(d+temp1)|0;d=c;c=b;b=a;a=(temp1+temp2)|0;
     }
-    let a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
-    for (let j = 0; j < 64; j++) {
-      const S1 = rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25);
-      const ch = (e & f) ^ (~e & g);
-      const temp1 = (h + S1 + ch + K[j] + w[j]) | 0;
-      const S0 = rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22);
-      const maj = (a & b) ^ (a & c) ^ (b & c);
-      const temp2 = (S0 + maj) | 0;
-      h = g; g = f; f = e; e = (d + temp1) | 0; d = c; c = b; b = a; a = (temp1 + temp2) | 0;
-    }
-    h0 = (h0 + a) | 0; h1 = (h1 + b) | 0; h2 = (h2 + c) | 0;
-    h3 = (h3 + d) | 0; h4 = (h4 + e) | 0; h5 = (h5 + f) | 0;
-    h6 = (h6 + g) | 0; h7 = (h7 + h) | 0;
+    h0=(h0+a)|0;h1=(h1+b)|0;h2=(h2+c)|0;h3=(h3+d)|0;h4=(h4+e)|0;h5=(h5+f)|0;h6=(h6+g)|0;h7=(h7+h)|0;
   }
-  function toHex(num) {
-    return ('00000000' + (num >>> 0).toString(16)).slice(-8);
-  }
-  return toHex(h0) + toHex(h1) + toHex(h2) + toHex(h3) +
-    toHex(h4) + toHex(h5) + toHex(h6) + toHex(h7);
+  function toHex(num){return ('00000000'+(num>>>0).toString(16)).slice(-8);}
+  return toHex(h0)+toHex(h1)+toHex(h2)+toHex(h3)+toHex(h4)+toHex(h5)+toHex(h6)+toHex(h7);
 }
 </script>
 
