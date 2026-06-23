@@ -422,69 +422,69 @@ function saveThreshold() {
 }
 
 // ============================================================
-// 🔐 로그인 처리
+// 💰 계정 잔여 금액 조회 (할인등록 페이지에서 직접 추출)
 // ============================================================
-async function handleLogin() {
-  const id = document.getElementById('loginId').value;
-  const pw = document.getElementById('loginPw').value;
-  const errorEl = document.getElementById('loginError');
-
-  if (!id || !pw) {
-    errorEl.textContent = '❌ 아이디와 비밀번호를 입력해주세요.';
-    errorEl.style.display = 'block';
-    return;
-  }
-
+async function fetchBalance() {
   try {
-    const hashedPw = sha256(pw);
-    const response = await fetch(`${PROXY_BASE}/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      credentials: 'include',
-      body: `userId=${encodeURIComponent(id)}&userPwd=${hashedPw}`
+    // 1. 숨겨진 iframe으로 할인등록 페이지 로드
+    const iframe = document.createElement('iframe');
+    iframe.src = 'https://a17574.parkingweb.kr/discount/registration';
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+
+    // 2. iframe 로드 완료 후 잔액 추출
+    const balance = await new Promise((resolve) => {
+      iframe.onload = function() {
+        try {
+          const doc = iframe.contentDocument || iframe.contentWindow.document;
+          const el = doc.getElementById('lblRemainTimeCharge');
+          if (el) {
+            const raw = el.textContent.replace(/,/g, '').trim();
+            const val = parseInt(raw) || 0;
+            resolve(val);
+          } else {
+            resolve(0);
+          }
+        } catch (e) {
+          resolve(0);
+        } finally {
+          // iframe 제거
+          iframe.remove();
+        }
+      };
+      // 5초 타임아웃
+      setTimeout(() => {
+        iframe.remove();
+        resolve(0);
+      }, 5000);
     });
 
-    const setCookieHeader = response.headers.get('set-cookie');
-    if (setCookieHeader) {
-      const match = setCookieHeader.match(/JSESSIONID=([^;]+)/);
-      if (match) {
-        sessionId = match[1];
-        console.log('✅ 세션 ID 획득:', sessionId);
+    currentBalance = balance;
+    updateBalanceDisplay(balance);
+    localStorage.setItem(BALANCE_KEY, balance.toString());
+    
+    // 잔액 알림 체크
+    if (balance > 0 && balance < THRESHOLD_AMOUNT) {
+      const now = Date.now();
+      const lastShown = lastToastShown['account'] || 0;
+      if (now - lastShown > 5 * 60 * 1000) {
+        lastToastShown['account'] = now;
+        showToast(
+          '⚠️ 계정 잔액 부족',
+          `현재 잔여 금액이 ${balance.toLocaleString()}원 입니다. 충전이 필요합니다. (임계값: ${THRESHOLD_AMOUNT.toLocaleString()}원)`,
+          'danger'
+        );
       }
     }
-
-    if (response.ok || response.status === 302) {
-      document.getElementById('loginOverlay').style.display = 'none';
-      document.getElementById('mainContent').style.display = 'block';
-      
-      // 최초 1회 잔액 조회 및 데이터 로드
-      await fetchBalance();
-      fetchData();
-      setInterval(async () => {
-        balanceCheckCount++;
-        if (balanceCheckCount % 6 === 0) {
-          await fetchBalance();
-        }
-        fetchData();
-      }, 10000);
-    } else {
-      errorEl.textContent = '❌ 아이디 또는 비밀번호가 올바르지 않습니다.';
-      errorEl.style.display = 'block';
-    }
   } catch (error) {
-    errorEl.textContent = '❌ 서버 연결에 실패했습니다.';
-    errorEl.style.display = 'block';
+    console.error('잔액 조회 실패:', error);
+    // 실패 시 localStorage 값 사용
+    const savedBalance = localStorage.getItem(BALANCE_KEY);
+    if (savedBalance !== null) {
+      currentBalance = parseInt(savedBalance);
+      updateBalanceDisplay(currentBalance);
+    }
   }
-}
-
-function handleLogout() {
-  document.getElementById('loginOverlay').style.display = 'flex';
-  document.getElementById('mainContent').style.display = 'none';
-  document.getElementById('loginError').style.display = 'none';
-  sessionId = '';
-  currentBalance = 0;
 }
 
 // ============================================================
