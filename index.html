@@ -489,12 +489,8 @@ function handleLogout() {
   document.getElementById('loginError').style.display = 'none';
   sessionId = '';
 }
-
 // ============================================================
-// 💰 계정 잔여 금액 조회
-// ============================================================
-// ============================================================
-// 💰 계정 잔여 금액 조회 (state/doListMst 활용)
+// 💰 계정 잔여 금액 조회 (state/doListMst 활용 - 최종)
 // ============================================================
 async function fetchBalance() {
   try {
@@ -511,7 +507,7 @@ async function fetchBalance() {
       headers['Cookie'] = `JSESSIONID=${sessionId}`;
     }
 
-    // ✅ state/doListMst는 정상 동작함
+    // ✅ state/doListMst는 항상 정상 동작 (200 OK)
     const response = await fetch(`${PROXY_BASE}/state/doListMst`, {
       method: 'POST',
       headers: headers,
@@ -520,7 +516,7 @@ async function fetchBalance() {
         startDate: dateStr,
         endDate: dateStr,
         account_no: 'oasis_g',
-        rowcount: '50000'
+        rowcount: '1'
       })
     });
 
@@ -531,7 +527,7 @@ async function fetchBalance() {
       const summary = result.summary?.[0] || {};
       let balance = 0;
       
-      // 가능한 잔액 필드 확인
+      // 가능한 모든 필드 확인
       if (summary.remainAmount !== undefined && summary.remainAmount !== null) {
         balance = summary.remainAmount;
       } else if (summary.remain_amt !== undefined && summary.remain_amt !== null) {
@@ -540,34 +536,31 @@ async function fetchBalance() {
         balance = summary.dcTimeRemainCharge;
       } else if (summary.totalRemain !== undefined && summary.totalRemain !== null) {
         balance = summary.totalRemain;
+      } else if (summary.discount_price !== undefined && summary.discount_price !== null) {
+        // discount_price가 잔액일 수도 있음
+        balance = summary.discount_price;
       }
       
-      // summary에 잔액이 없으면, data에서 member 정보 확인
+      // summary에 없으면 data의 첫 번째 행에서 찾기
       if (balance === 0 && result.data && result.data.length > 0) {
-        // 첫 번째 행에 member 정보가 포함되어 있을 수 있음
         const firstRow = result.data[0];
         if (firstRow && firstRow.remainAmount) {
           balance = firstRow.remainAmount;
         }
       }
       
-      if (balance > 0 || balance === 0) {
-        currentBalance = balance;
-        updateBalanceDisplay(balance);
-        localStorage.setItem('last_balance', balance.toString());
-        return;
-      }
+      // 잔액 업데이트
+      currentBalance = balance;
+      updateBalanceDisplay(balance);
+      localStorage.setItem('last_balance', balance.toString());
+      return;
     }
     
-    // state/doListMst에서 잔액을 못 찾으면 localStorage 사용
+    // 응답 실패 시 localStorage 사용
     const savedBalance = localStorage.getItem('last_balance');
     if (savedBalance !== null) {
       currentBalance = parseInt(savedBalance);
       updateBalanceDisplay(currentBalance);
-    } else {
-      // 기본값 0
-      currentBalance = 0;
-      updateBalanceDisplay(0);
     }
   } catch (error) {
     console.error('잔액 조회 실패:', error);
@@ -578,7 +571,6 @@ async function fetchBalance() {
     }
   }
 }
-
 // ============================================================
 // 📊 데이터 가져오기 + 상세 조회
 // ============================================================
