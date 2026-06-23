@@ -445,7 +445,6 @@ async function handleLogin() {
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('mainContent').style.display = 'block';
       
-      // 최초 잔액 조회 (state/doListMst 방식 - 실패해도 로그인 유지)
       try {
         await fetchBalance();
       } catch (e) {
@@ -539,6 +538,15 @@ function updateBalanceDisplay(balance) {
 }
 
 // ============================================================
+// 🔧 dc_time에서 분(minute) 추출
+// ============================================================
+function extractMinutesFromDcTime(dcTime) {
+  if (!dcTime) return 0;
+  const match = dcTime.match(/\(([\d.]+)\)/);
+  return match ? parseFloat(match[1]) || 0 : 0;
+}
+
+// ============================================================
 // 📊 데이터 가져오기
 // ============================================================
 async function fetchData() {
@@ -574,7 +582,7 @@ async function fetchData() {
     const result = await response.json();
     const rawData = result.data || [];
     
-    // 차량별 데이터 집계 (used_basic, used_charge 포함)
+    // 차량별 데이터 집계 - dc_time에서 분 추출하여 합산
     const carMap = new Map();
     for (const row of rawData) {
       const carNo = row.carno;
@@ -582,9 +590,7 @@ async function fetchData() {
       if (!carMap.has(carNo)) {
         carMap.set(carNo, {
           carNo,
-          totalDiscountTime: 0,
-          usedBasic: 0,
-          usedCharge: 0,
+          totalDiscountTime: 0,        // 분 단위로 누적
           totalAmount: 0,
           entryDate: row.entry_date || '',
           discountNames: [],
@@ -594,14 +600,12 @@ async function fetchData() {
       }
       const car = carMap.get(carNo);
       
-      // 할인 시간(분) - used_basic + used_charge 합산
-      const basic = parseInt(row.used_basic) || 0;
-      const charge = parseInt(row.used_charge) || 0;
-      car.usedBasic += basic;
-      car.usedCharge += charge;
-      car.totalDiscountTime += (basic + charge);
+      // ✅ dc_time에서 분(minute) 추출하여 누적
+      const minutes = extractMinutesFromDcTime(row.dc_time);
+      car.totalDiscountTime += minutes;
       
-      const amount = basic + charge;
+      // 할인 금액 합산 (used_basic + used_charge)
+      const amount = (parseInt(row.used_basic) || 0) + (parseInt(row.used_charge) || 0);
       car.totalAmount += amount;
       
       if (row.discount_name) car.discountNames.push(row.discount_name);
@@ -689,7 +693,7 @@ async function fetchData() {
 }
 
 // ============================================================
-// 🖥️ 렌더링 (할인구분을 used_basic + used_charge로 합산)
+// 🖥️ 렌더링 (할인구분 = totalDiscountTime을 시간으로 변환)
 // ============================================================
 function renderData(data) {
   document.getElementById('statTotal').textContent = data.length;
@@ -713,9 +717,8 @@ function renderData(data) {
     const parkingDisplay = row.paidStat === '10' ? '-' : formatTime(row.parkingMinutes);
     const remainDisplay = row.paidStat === '10' ? '-' : formatTime(row.remainTime);
     
-    // ✅ 할인구분 = used_basic + used_charge 합산
-    const totalMinutes = (row.usedBasic || 0) + (row.usedCharge || 0);
-    const discountDisplay = totalMinutes > 0 ? formatTime(totalMinutes) : '-';
+    // ✅ 할인구분 = totalDiscountTime를 시간으로 변환
+    const discountDisplay = row.totalDiscountTime > 0 ? formatTime(row.totalDiscountTime) : '-';
 
     tr.innerHTML = `
       <td>${idx + 1}</td>
