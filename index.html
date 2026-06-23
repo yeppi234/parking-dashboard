@@ -264,9 +264,13 @@
 // ✅ Vercel 프록시 주소 (고정)
 // ============================================================
 const PROXY_BASE = 'https://parking-dashboard-beryl.vercel.app/api/proxy';
+// ============================================================
+// ✅ 세션 ID를 저장할 변수
+// ============================================================
+let sessionId = '';
 
 // ============================================================
-// 🔐 로그인 처리 (프록시 경유)
+// 🔐 로그인 처리 (수정)
 // ============================================================
 async function handleLogin() {
   const id = document.getElementById('loginId').value;
@@ -291,6 +295,16 @@ async function handleLogin() {
       body: `userId=${encodeURIComponent(id)}&userPwd=${hashedPw}`
     });
 
+    // 🔑 Set-Cookie 헤더에서 JSESSIONID 추출
+    const setCookieHeader = response.headers.get('set-cookie');
+    if (setCookieHeader) {
+      const match = setCookieHeader.match(/JSESSIONID=([^;]+)/);
+      if (match) {
+        sessionId = match[1];
+        console.log('✅ 세션 ID 획득:', sessionId);
+      }
+    }
+
     if (response.ok || response.status === 302) {
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('mainContent').style.display = 'block';
@@ -307,16 +321,7 @@ async function handleLogin() {
 }
 
 // ============================================================
-// 🔐 로그아웃
-// ============================================================
-function handleLogout() {
-  document.getElementById('loginOverlay').style.display = 'flex';
-  document.getElementById('mainContent').style.display = 'none';
-  document.getElementById('loginError').style.display = 'none';
-}
-
-// ============================================================
-// 📊 데이터 가져오기 (프록시 경유)
+// 📊 데이터 가져오기 (수정: 수동으로 Cookie 헤더 추가)
 // ============================================================
 async function fetchData() {
   try {
@@ -325,14 +330,19 @@ async function fetchData() {
       String(today.getMonth() + 1).padStart(2, '0') +
       String(today.getDate()).padStart(2, '0');
 
-    // ✅ 쿠키 포함을 위해 credentials: 'include' 유지
+    // ✅ 세션 ID가 있으면 Cookie 헤더에 추가
+    const headers = {
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      'X-Requested-With': 'XMLHttpRequest',
+    };
+    if (sessionId) {
+      headers['Cookie'] = `JSESSIONID=${sessionId}`;
+    }
+
     const response = await fetch(`${PROXY_BASE}/state/doListMst`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      credentials: 'include',
+      headers: headers,
+      credentials: 'include', // 쿠키를 주고받지만, 수동 헤더도 함께 전송
       body: new URLSearchParams({
         startDate: dateStr,
         endDate: dateStr,
