@@ -422,72 +422,64 @@ function saveThreshold() {
 }
 
 // ============================================================
-// 🔐 로그인 처리
+// 💰 계정 잔여 금액 조회 (state/doListMst 최종)
 // ============================================================
-async function handleLogin() {
-  const id = document.getElementById('loginId').value;
-  const pw = document.getElementById('loginPw').value;
-  const errorEl = document.getElementById('loginError');
-
-  if (!id || !pw) {
-    errorEl.textContent = '❌ 아이디와 비밀번호를 입력해주세요.';
-    errorEl.style.display = 'block';
-    return;
-  }
-
+async function fetchBalance() {
   try {
-    const hashedPw = sha256(pw);
-    const response = await fetch(`${PROXY_BASE}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      credentials: 'include',
-      body: `userId=${encodeURIComponent(id)}&userPwd=${hashedPw}`
-    });
+    const today = new Date();
+    const dateStr = today.getFullYear() +
+      String(today.getMonth() + 1).padStart(2, '0') +
+      String(today.getDate()).padStart(2, '0');
 
-    const setCookieHeader = response.headers.get('set-cookie');
-    if (setCookieHeader) {
-      const match = setCookieHeader.match(/JSESSIONID=([^;]+)/);
-      if (match) {
-        sessionId = match[1];
-        console.log('✅ 세션 ID 획득:', sessionId);
-      }
+    const headers = {
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      'X-Requested-With': 'XMLHttpRequest',
+    };
+    if (sessionId) {
+      headers['Cookie'] = `JSESSIONID=${sessionId}`;
     }
 
-    if (response.ok || response.status === 302) {
-      document.getElementById('loginOverlay').style.display = 'none';
-      document.getElementById('mainContent').style.display = 'block';
+    const response = await fetch(`${PROXY_BASE}/state/doListMst`, {
+      method: 'POST',
+      headers: headers,
+      credentials: 'include',
+      body: new URLSearchParams({
+        startDate: dateStr,
+        endDate: dateStr,
+        account_no: 'oasis_g',
+        rowcount: '1'
+      })
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      const summary = result.summary?.[0] || {};
       
-      // localStorage에 저장된 잔액 있으면 우선 표시
-      const savedBalance = localStorage.getItem(BALANCE_KEY);
+      // 잔액 필드 찾기
+      let balance = summary.remainAmount || 
+                    summary.remain_amt || 
+                    summary.dcTimeRemainCharge || 
+                    summary.totalRemain || 0;
+      
+      currentBalance = balance;
+      updateBalanceDisplay(balance);
+      localStorage.setItem('last_balance', balance.toString());
+    } else {
+      // 실패 시 localStorage 사용
+      const savedBalance = localStorage.getItem('last_balance');
       if (savedBalance !== null) {
         currentBalance = parseInt(savedBalance);
         updateBalanceDisplay(currentBalance);
       }
-      
-      await fetchBalance();
-      fetchData();
-      setInterval(async () => {
-        balanceCheckCount++;
-        if (balanceCheckCount % 6 === 0) {
-          await fetchBalance();
-        }
-        fetchData();
-      }, 10000);
-    } else {
-      errorEl.textContent = '❌ 아이디 또는 비밀번호가 올바르지 않습니다.';
-      errorEl.style.display = 'block';
     }
   } catch (error) {
-    errorEl.textContent = '❌ 서버 연결에 실패했습니다.';
-    errorEl.style.display = 'block';
+    console.error('잔액 조회 실패:', error);
+    const savedBalance = localStorage.getItem('last_balance');
+    if (savedBalance !== null) {
+      currentBalance = parseInt(savedBalance);
+      updateBalanceDisplay(currentBalance);
+    }
   }
-}
-
-function handleLogout() {
-  document.getElementById('loginOverlay').style.display = 'flex';
-  document.getElementById('mainContent').style.display = 'none';
-  document.getElementById('loginError').style.display = 'none';
-  sessionId = '';
 }
 // ============================================================
 // 💰 계정 잔여 금액 조회 (state/doListMst 활용 - 최종)
