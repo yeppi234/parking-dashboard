@@ -6,30 +6,28 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Cookie');
 
-  // OPTIONS 요청 (프리플라이트) 처리
+  // OPTIONS 요청 처리
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   try {
-    // ✅ req.url에서 /api/proxy 부분을 제거하고 실제 경로만 추출
-    let targetPath = req.url;
-    if (targetPath.startsWith('/api/proxy')) {
-      targetPath = targetPath.replace('/api/proxy', '');
-    }
-    
     // 실제 타겟 URL 생성
-    const targetUrl = 'https://a17574.parkingweb.kr' + targetPath;
-    
+    const targetPath = req.url.replace('/api/proxy', '');
+    const targetUrl = `https://a17574.parkingweb.kr${targetPath}`;
+
     const cookie = req.headers.cookie || '';
 
-    // POST 요청인 경우 body 읽기
+    // ✅ body를 그대로 전달 (가공하지 않음)
     let body = req.body;
-    if (req.method === 'POST') {
-      if (typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
-        body = new URLSearchParams(req.body).toString();
-      }
+
+    // Vercel이 body를 객체로 파싱한 경우 URLSearchParams로 변환
+    if (req.method === 'POST' && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
+      body = new URLSearchParams(req.body).toString();
     }
+
+    console.log('🔑 Proxy target:', targetUrl);
+    console.log('📦 Body:', body); // Vercel 로그에서 확인 가능
 
     const response = await fetch(targetUrl, {
       method: req.method,
@@ -45,6 +43,9 @@ export default async function handler(req, res) {
     res.status(response.status).send(data);
   } catch (error) {
     console.error('Proxy error:', error);
-    res.status(500).json({ error: 'Proxy server error: ' + error.message });
+    res.status(500).json({ 
+      error: 'Proxy error', 
+      details: error.message 
+    });
   }
 }
