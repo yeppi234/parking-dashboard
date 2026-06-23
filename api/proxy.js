@@ -21,14 +21,11 @@ export default async function handler(req, res) {
     // 실제 타겟 URL 생성
     const targetUrl = 'https://a17574.parkingweb.kr' + targetPath;
     
-    console.log('🔄 Proxy to:', targetUrl); // Vercel 로그에 출력
-
     const cookie = req.headers.cookie || '';
 
     // POST 요청인 경우 body 읽기
     let body = req.body;
-    if (req.method === 'POST' && req.headers['content-type']?.includes('application/x-www-form-urlencoded')) {
-      // body가 이미 string이면 그대로 사용
+    if (req.method === 'POST') {
       if (typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
         body = new URLSearchParams(req.body).toString();
       }
