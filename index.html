@@ -538,12 +538,53 @@ function updateBalanceDisplay(balance) {
 }
 
 // ============================================================
-// 🔧 dc_time에서 분(minute) 추출
+// 🔧 dc_time에서 분(minute) 추출 (강화 버전 - 모든 형식 대응)
 // ============================================================
 function extractMinutesFromDcTime(dcTime) {
   if (!dcTime) return 0;
-  const match = dcTime.match(/\(([\d.]+)\)/);
-  return match ? parseFloat(match[1]) || 0 : 0;
+  
+  // 1️⃣ 괄호 안 숫자 추출 (예: "4시간 (240)" → 240)
+  let match = dcTime.match(/\(([\d.]+)\)/);
+  if (match) return parseFloat(match[1]) || 0;
+  
+  // 2️⃣ "X시간 Y분" 형식 (예: "4시간30분" → 270)
+  let hours = 0, minutes = 0;
+  const hourMatch = dcTime.match(/(\d+)\s*시간/);
+  const minMatch = dcTime.match(/(\d+)\s*분/);
+  if (hourMatch) hours = parseInt(hourMatch[1]);
+  if (minMatch) minutes = parseInt(minMatch[1]);
+  if (hours > 0 || minutes > 0) return hours * 60 + minutes;
+  
+  // 3️⃣ "X시간"만 있는 경우 (예: "4시간" → 240)
+  const onlyHour = dcTime.match(/^(\d+)\s*시간$/);
+  if (onlyHour) return parseInt(onlyHour[1]) * 60;
+  
+  // 4️⃣ "X분"만 있는 경우 (예: "30분" → 30)
+  const onlyMin = dcTime.match(/^(\d+)\s*분$/);
+  if (onlyMin) return parseInt(onlyMin[1]) || 0;
+  
+  // 5️⃣ 숫자만 있는 경우 (예: "240" → 240)
+  const numMatch = dcTime.match(/^\d+$/);
+  if (numMatch) return parseInt(numMatch[0]) || 0;
+  
+  // 6️⃣ "1시간 + 2시간" 형식 (괄호 없이 +로 연결)
+  if (dcTime.includes('+')) {
+    const parts = dcTime.split('+');
+    let total = 0;
+    for (const part of parts) {
+      total += extractMinutesFromDcTime(part.trim());
+    }
+    return total;
+  }
+  
+  // 7️⃣ "1시간 30분" 형식 (공백으로 구분)
+  const spaceMatch = dcTime.match(/(\d+)\s*시간\s*(\d+)\s*분/);
+  if (spaceMatch) {
+    return parseInt(spaceMatch[1]) * 60 + parseInt(spaceMatch[2]);
+  }
+  
+  console.warn('⚠️ 파싱 실패한 dc_time:', dcTime);
+  return 0;
 }
 
 // ============================================================
@@ -596,11 +637,12 @@ async function fetchData() {
           discountNames: [],
           paidStat: row.paid_stat || '00',
           entryId: row.id || '',
+          originalDcTime: row.dc_time || ''  // 디버깅용 원본 저장
         });
       }
       const car = carMap.get(carNo);
       
-      // ✅ dc_time에서 분(minute) 추출하여 누적
+      // ✅ 강화된 dc_time 파싱 함수 사용
       const minutes = extractMinutesFromDcTime(row.dc_time);
       car.totalDiscountTime += minutes;
       
@@ -719,13 +761,16 @@ function renderData(data) {
     
     // ✅ 할인구분 = totalDiscountTime를 시간으로 변환
     const discountDisplay = row.totalDiscountTime > 0 ? formatTime(row.totalDiscountTime) : '-';
+    
+    // ✅ 디버깅: 원본 dc_time을 작은 글씨로 함께 표시
+    const debugInfo = row.originalDcTime ? ` (${row.originalDcTime})` : '';
 
     tr.innerHTML = `
       <td>${idx + 1}</td>
       <td><strong>${row.carNo}</strong></td>
       <td>${row.entryDate ? fncDatetimeFormat(row.entryDate) : '-'}</td>
       <td>${parkingDisplay}</td>
-      <td>${discountDisplay}</td>
+      <td>${discountDisplay}<span style="font-size:10px;color:#999;">${debugInfo}</span></td>
       <td>${row.totalAmountDisplay}</td>
       <td>${row.totalDiscountTimeDisplay}</td>
       <td class="${remainClass}">${remainDisplay}</td>
