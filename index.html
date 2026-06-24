@@ -183,7 +183,7 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 13px;
-      min-width: 900px;
+      min-width: 700px;
     }
     thead {
       background: #f8fafc;
@@ -212,7 +212,6 @@
       50% { opacity: 0.3; }
     }
 
-    /* ✅ 새로운 차량 점멸 효과 */
     @keyframes blinkNewRow {
       0% { background-color: #fff3cd; }
       50% { background-color: #ffeaa7; }
@@ -350,17 +349,15 @@
           <tr>
             <th>순번</th>
             <th>차량번호</th>
-            <th>입차시간</th>
+            <th>할인등록시간</th>
             <th>주차시간</th>
             <th>할인구분</th>
-            <th>할인금액</th>
-            <th>할인합계</th>
             <th>여유시간</th>
             <th>상태</th>
           </tr>
         </thead>
         <tbody id="tableBody">
-          <tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">⏳ 데이터 로딩 중...</td></tr>
+          <tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8;">⏳ 데이터 로딩 중...</td></tr>
         </tbody>
       </table>
     </div>
@@ -383,8 +380,6 @@ let sessionId = '';
 let lastToastShown = {};
 let currentBalance = 0;
 let balanceCheckCount = 0;
-
-// ✅ 이전 차량 번호 목록 (새 차량 감지용)
 let prevCarNos = new Set();
 
 // ============================================================
@@ -494,7 +489,7 @@ function handleLogout() {
 }
 
 // ============================================================
-// 💰 잔액 조회 (state/doListMst 방식)
+// 💰 잔액 조회
 // ============================================================
 async function fetchBalance() {
   try {
@@ -552,16 +547,14 @@ function updateBalanceDisplay(balance) {
 }
 
 // ============================================================
-// 🔧 dc_time에서 분(minute) 추출 (강화 버전)
+// 🔧 dc_time에서 분 추출
 // ============================================================
 function extractMinutesFromDcTime(dcTime) {
   if (!dcTime) return 0;
   
-  // 1️⃣ 괄호 안 숫자 (예: "4시간 (240)" → 240)
   let match = dcTime.match(/\(([\d.]+)\)/);
   if (match) return parseFloat(match[1]) || 0;
   
-  // 2️⃣ "X시간 Y분" (예: "4시간30분" → 270)
   let hours = 0, minutes = 0;
   const hourMatch = dcTime.match(/(\d+)\s*시간/);
   const minMatch = dcTime.match(/(\d+)\s*분/);
@@ -569,21 +562,17 @@ function extractMinutesFromDcTime(dcTime) {
   if (minMatch) minutes = parseInt(minMatch[1]);
   if (hours > 0 || minutes > 0) return hours * 60 + minutes;
   
-  // 3️⃣ "X시간"만 (예: "4시간" → 240)
   const onlyHour = dcTime.match(/^(\d+)\s*시간$/);
   if (onlyHour) return parseInt(onlyHour[1]) * 60;
   
-  // 4️⃣ "X분"만 (예: "30분" → 30)
   const onlyMin = dcTime.match(/^(\d+)\s*분$/);
   if (onlyMin) return parseInt(onlyMin[1]) || 0;
   
-  // 5️⃣ 순수 숫자 (예: "120" → 120, "120.0" → 120)
   const pureNumber = parseFloat(dcTime);
   if (!isNaN(pureNumber) && pureNumber > 0) {
     return pureNumber;
   }
   
-  // 6️⃣ "+"로 연결 (예: "1시간 + 2시간")
   if (dcTime.includes('+')) {
     const parts = dcTime.split('+');
     let total = 0;
@@ -593,7 +582,6 @@ function extractMinutesFromDcTime(dcTime) {
     return total;
   }
   
-  // 7️⃣ "X시간 Y분" 공백 구분
   const spaceMatch = dcTime.match(/(\d+)\s*시간\s*(\d+)\s*분/);
   if (spaceMatch) {
     return parseInt(spaceMatch[1]) * 60 + parseInt(spaceMatch[2]);
@@ -604,7 +592,7 @@ function extractMinutesFromDcTime(dcTime) {
 }
 
 // ============================================================
-// 📊 데이터 가져오기 (새 차량 감지 포함)
+// 📊 데이터 가져오기
 // ============================================================
 async function fetchData() {
   try {
@@ -639,17 +627,13 @@ async function fetchData() {
     const result = await response.json();
     const rawData = result.data || [];
     
-    // 현재 차량 번호 목록
     const currentCarNos = new Set(rawData.map(row => row.carno).filter(Boolean));
-
-    // ✅ 새로 추가된 차량 번호 찾기
     const newCarNos = [];
     for (const carNo of currentCarNos) {
       if (!prevCarNos.has(carNo)) {
         newCarNos.push(carNo);
       }
     }
-    // 이전 목록 업데이트
     prevCarNos = currentCarNos;
 
     const carMap = new Map();
@@ -660,13 +644,13 @@ async function fetchData() {
         carMap.set(carNo, {
           carNo,
           totalDiscountTime: 0,
-          totalAmount: 0,
+          regDate: row.reg_date || '',
           entryDate: row.entry_date || '',
           discountNames: [],
           paidStat: row.paid_stat || '00',
           entryId: row.id || '',
           originalDcTime: row.dc_time || '',
-          isNew: newCarNos.includes(carNo) // ✅ 새 차량 여부 저장
+          isNew: newCarNos.includes(carNo)
         });
       }
       const car = carMap.get(carNo);
@@ -674,12 +658,10 @@ async function fetchData() {
       const minutes = extractMinutesFromDcTime(row.dc_time);
       car.totalDiscountTime += minutes;
       
-      const amount = (parseInt(row.used_basic) || 0) + (parseInt(row.used_charge) || 0);
-      car.totalAmount += amount;
-      
       if (row.discount_name && !car.discountNames.includes(row.discount_name)) {
         car.discountNames.push(row.discount_name);
       }
+      if (row.reg_date) car.regDate = row.reg_date;
       if (row.entry_date) car.entryDate = row.entry_date;
       if (row.id) car.entryId = row.id;
       if (row.paid_stat) car.paidStat = row.paid_stat;
@@ -695,7 +677,6 @@ async function fetchData() {
           statusText: '출차완료',
           statusClass: 'status-complete',
           totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
-          totalAmountDisplay: car.totalAmount > 0 ? car.totalAmount.toLocaleString() + '원' : '무료',
           discountNames: car.discountNames.length > 0 ? car.discountNames.join(' + ') : '-'
         });
         continue;
@@ -734,7 +715,6 @@ async function fetchData() {
           statusText,
           statusClass,
           totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
-          totalAmountDisplay: car.totalAmount > 0 ? car.totalAmount.toLocaleString() + '원' : '무료',
           discountNames: car.discountNames.length > 0 ? car.discountNames.join(' + ') : '-'
         });
       } catch (e) {
@@ -745,7 +725,6 @@ async function fetchData() {
           statusText: '미출차',
           statusClass: 'status-pending',
           totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
-          totalAmountDisplay: car.totalAmount > 0 ? car.totalAmount.toLocaleString() + '원' : '무료',
           discountNames: car.discountNames.length > 0 ? car.discountNames.join(' + ') : '-'
         });
       }
@@ -761,12 +740,12 @@ async function fetchData() {
   } catch (error) {
     console.error('데이터 로드 실패:', error);
     document.getElementById('tableBody').innerHTML = 
-      '<tr><td colspan="9" style="text-align:center;padding:40px;color:#ef4444;">⚠️ 데이터를 불러오지 못했습니다.</td></tr>';
+      '<tr><td colspan="7" style="text-align:center;padding:40px;color:#ef4444;">⚠️ 데이터를 불러오지 못했습니다.</td></tr>';
   }
 }
 
 // ============================================================
-// 🖥️ 렌더링 (새 차량 점멸 효과 포함)
+// 🖥️ 렌더링
 // ============================================================
 function renderData(data) {
   document.getElementById('statTotal').textContent = data.length;
@@ -775,7 +754,7 @@ function renderData(data) {
   const tbody = document.getElementById('tableBody');
   tbody.innerHTML = '';
   if (!data || data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">📭 등록 내역이 없습니다.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8;">📭 등록 내역이 없습니다.</td></tr>';
     return;
   }
 
@@ -789,23 +768,20 @@ function renderData(data) {
     
     const parkingDisplay = row.paidStat === '10' ? '-' : formatTime(row.parkingMinutes);
     const remainDisplay = row.paidStat === '10' ? '-' : formatTime(row.remainTime);
-    
+    const regDateDisplay = row.regDate ? fncDatetimeFormat(row.regDate) : '-';
     const discountDisplay = row.totalDiscountTime > 0 ? formatTime(row.totalDiscountTime) : '-';
     const debugInfo = row.originalDcTime ? ` (${row.originalDcTime})` : '';
 
     tr.innerHTML = `
       <td>${idx + 1}</td>
       <td><strong>${row.carNo}</strong></td>
-      <td>${row.entryDate ? fncDatetimeFormat(row.entryDate) : '-'}</td>
+      <td>${regDateDisplay}</td>
       <td>${parkingDisplay}</td>
       <td>${discountDisplay}<span style="font-size:10px;color:#999;">${debugInfo}</span></td>
-      <td>${row.totalAmountDisplay}</td>
-      <td>${row.totalDiscountTimeDisplay}</td>
       <td class="${remainClass}">${remainDisplay}</td>
       <td><span class="${row.statusClass}">${row.statusText}</span></td>
     `;
 
-    // ✅ 새 차량이면 점멸 클래스 추가 (3초 후 자동 제거)
     if (row.isNew) {
       tr.classList.add('row-new');
       setTimeout(() => {
