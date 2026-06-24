@@ -730,10 +730,14 @@ async function fetchData() {
       }
     }
 
+    // ✅ 등록시간 기준 내림차순 정렬 (최신 등록이 위로)
     detailedCars.sort((a, b) => {
-      if (a.paidStat === '10') return 1;
-      if (b.paidStat === '10') return -1;
-      return a.remainTime - b.remainTime;
+      if (a.paidStat === '10' && b.paidStat !== '10') return 1;
+      if (a.paidStat !== '10' && b.paidStat === '10') return -1;
+      // 같은 상태면 등록시간 내림차순
+      if (a.regDate > b.regDate) return -1;
+      if (a.regDate < b.regDate) return 1;
+      return 0;
     });
     
     renderData(detailedCars);
@@ -769,15 +773,15 @@ function renderData(data) {
     const parkingDisplay = row.paidStat === '10' ? '-' : formatTime(row.parkingMinutes);
     const remainDisplay = row.paidStat === '10' ? '-' : formatTime(row.remainTime);
     const regDateDisplay = row.regDate ? fncDatetimeFormat(row.regDate) : '-';
+    // ✅ 디버그 정보 제거 (괄호 안 분 표시 없앰)
     const discountDisplay = row.totalDiscountTime > 0 ? formatTime(row.totalDiscountTime) : '-';
-    const debugInfo = row.originalDcTime ? ` (${row.originalDcTime})` : '';
 
     tr.innerHTML = `
       <td>${idx + 1}</td>
       <td><strong>${row.carNo}</strong></td>
       <td>${regDateDisplay}</td>
       <td>${parkingDisplay}</td>
-      <td>${discountDisplay}<span style="font-size:10px;color:#999;">${debugInfo}</span></td>
+      <td>${discountDisplay}</td>
       <td class="${remainClass}">${remainDisplay}</td>
       <td><span class="${row.statusClass}">${row.statusText}</span></td>
     `;
