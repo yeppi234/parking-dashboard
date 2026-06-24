@@ -19,9 +19,9 @@ export default async function handler(req, res) {
     // 쿠키 전달
     const cookieHeader = req.headers.cookie || '';
 
-    // POST body 처리
-    let body = req.body;
-    if (typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
+    // ✅ POST body 처리 (body가 없으면 빈 문자열)
+    let body = '';
+    if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
       const params = new URLSearchParams();
       for (const [key, value] of Object.entries(req.body)) {
         params.append(key, value);
@@ -29,15 +29,15 @@ export default async function handler(req, res) {
       body = params.toString();
     }
 
-    // ✅ 항상 POST 메서드로 전달 (강제)
+    // ✅ 요청 메서드를 강제로 POST로 고정!
     const response = await fetch(targetUrl, {
-      method: 'POST',   // ← POST로 강제!
+      method: 'POST',   // ← 무조건 POST
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Cookie': cookieHeader,
         'X-Requested-With': 'XMLHttpRequest',
       },
-      body: body,
+      body: body || undefined, // body가 없으면 undefined로 처리
     });
 
     const data = await response.text();
