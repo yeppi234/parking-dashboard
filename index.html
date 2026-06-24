@@ -502,7 +502,7 @@ async function fetchBalance() {
       body: new URLSearchParams({
         startDate: dateStr,
         endDate: dateStr,
-        account_no: 'oasis_g',
+        account_no: '',  // ✅ 빈값으로 전체 조회
         rowcount: '1'
       })
     });
@@ -538,7 +538,7 @@ function updateBalanceDisplay(balance) {
 }
 
 // ============================================================
-// 🔧 dc_time에서 분(minute) 추출 (수정된 부분만)
+// 🔧 dc_time에서 분(minute) 추출
 // ============================================================
 function extractMinutesFromDcTime(dcTime) {
   if (!dcTime) return 0;
@@ -563,7 +563,7 @@ function extractMinutesFromDcTime(dcTime) {
   const onlyMin = dcTime.match(/^(\d+)\s*분$/);
   if (onlyMin) return parseInt(onlyMin[1]) || 0;
   
-  // 5️⃣ ✅ 순수 숫자 (예: "120" → 120, "120.0" → 120) - 이 부분만 추가됨
+  // 5️⃣ 순수 숫자 (예: "120" → 120, "120.0" → 120)
   const pureNumber = parseFloat(dcTime);
   if (!isNaN(pureNumber) && pureNumber > 0) {
     return pureNumber;
@@ -605,6 +605,7 @@ async function fetchData() {
     };
     if (sessionId) headers['Cookie'] = `JSESSIONID=${sessionId}`;
 
+    // ✅ account_no 필터 제거 (빈값으로 전체 조회)
     const response = await fetch(`${PROXY_BASE}/state/doListMst`, {
       method: 'POST',
       headers: headers,
@@ -612,7 +613,7 @@ async function fetchData() {
       body: new URLSearchParams({
         startDate: dateStr,
         endDate: dateStr,
-        account_no: 'oasis_g',
+        account_no: '',  // ✅ 빈값 = 전체 조회
         rowcount: '50000'
       })
     });
@@ -696,7 +697,8 @@ async function fetchData() {
           const now = new Date();
           parkingMinutes = Math.floor((now - entry) / 60000);
         }
-        const remainTime = Math.max(0, parkingMinutes - car.totalDiscountTime);
+        // ✅ 여유시간 = 할인시간 - 주차시간
+        const remainTime = Math.max(0, car.totalDiscountTime - parkingMinutes);
         const statusText = remainTime <= 0 ? '미출차 (초과)' : '미출차';
         const statusClass = remainTime <= 0 ? 'status-pending' : 'status-pending';
         detailedCars.push({
