@@ -538,7 +538,7 @@ function updateBalanceDisplay(balance) {
 }
 
 // ============================================================
-// 🔧 dc_time에서 분(minute) 추출 (강화 버전 - 모든 형식 대응)
+// 🔧 dc_time에서 분(minute) 추출 (강화 버전)
 // ============================================================
 function extractMinutesFromDcTime(dcTime) {
   if (!dcTime) return 0;
@@ -567,7 +567,7 @@ function extractMinutesFromDcTime(dcTime) {
   const numMatch = dcTime.match(/^\d+$/);
   if (numMatch) return parseInt(numMatch[0]) || 0;
   
-  // 6️⃣ "1시간 + 2시간" 형식 (괄호 없이 +로 연결)
+  // 6️⃣ "+"로 연결된 복수 할인 (예: "1시간 + 2시간")
   if (dcTime.includes('+')) {
     const parts = dcTime.split('+');
     let total = 0;
@@ -577,7 +577,7 @@ function extractMinutesFromDcTime(dcTime) {
     return total;
   }
   
-  // 7️⃣ "1시간 30분" 형식 (공백으로 구분)
+  // 7️⃣ "X시간 Y분" 공백 구분
   const spaceMatch = dcTime.match(/(\d+)\s*시간\s*(\d+)\s*분/);
   if (spaceMatch) {
     return parseInt(spaceMatch[1]) * 60 + parseInt(spaceMatch[2]);
@@ -623,7 +623,6 @@ async function fetchData() {
     const result = await response.json();
     const rawData = result.data || [];
     
-    // 차량별 데이터 집계 - dc_time에서 분 추출하여 합산
     const carMap = new Map();
     for (const row of rawData) {
       const carNo = row.carno;
@@ -631,34 +630,34 @@ async function fetchData() {
       if (!carMap.has(carNo)) {
         carMap.set(carNo, {
           carNo,
-          totalDiscountTime: 0,        // 분 단위로 누적
+          totalDiscountTime: 0,
           totalAmount: 0,
           entryDate: row.entry_date || '',
           discountNames: [],
           paidStat: row.paid_stat || '00',
           entryId: row.id || '',
-          originalDcTime: row.dc_time || ''  // 디버깅용 원본 저장
+          originalDcTime: row.dc_time || ''
         });
       }
       const car = carMap.get(carNo);
       
-      // ✅ 강화된 dc_time 파싱 함수 사용
       const minutes = extractMinutesFromDcTime(row.dc_time);
       car.totalDiscountTime += minutes;
       
-      // 할인 금액 합산 (used_basic + used_charge)
       const amount = (parseInt(row.used_basic) || 0) + (parseInt(row.used_charge) || 0);
       car.totalAmount += amount;
       
-      if (row.discount_name) car.discountNames.push(row.discount_name);
+      if (row.discount_name && !car.discountNames.includes(row.discount_name)) {
+        car.discountNames.push(row.discount_name);
+      }
       if (row.entry_date) car.entryDate = row.entry_date;
       if (row.id) car.entryId = row.id;
       if (row.paid_stat) car.paidStat = row.paid_stat;
     }
 
-    // 상세 정보 조회 및 여유시간 계산
     const detailedCars = [];
     for (const [carNo, car] of carMap) {
+      // ✅ 출차완료 차량도 할인 시간 표시
       if (car.paidStat === '10') {
         detailedCars.push({
           ...car,
@@ -667,7 +666,8 @@ async function fetchData() {
           statusText: '출차완료',
           statusClass: 'status-complete',
           totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
-          totalAmountDisplay: car.totalAmount > 0 ? car.totalAmount.toLocaleString() + '원' : '무료'
+          totalAmountDisplay: car.totalAmount > 0 ? car.totalAmount.toLocaleString() + '원' : '무료',
+          discountNames: car.discountNames.length > 0 ? car.discountNames.join(' + ') : '-'
         });
         continue;
       }
@@ -705,7 +705,8 @@ async function fetchData() {
           statusText,
           statusClass,
           totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
-          totalAmountDisplay: car.totalAmount > 0 ? car.totalAmount.toLocaleString() + '원' : '무료'
+          totalAmountDisplay: car.totalAmount > 0 ? car.totalAmount.toLocaleString() + '원' : '무료',
+          discountNames: car.discountNames.length > 0 ? car.discountNames.join(' + ') : '-'
         });
       } catch (e) {
         detailedCars.push({
@@ -715,7 +716,8 @@ async function fetchData() {
           statusText: '미출차',
           statusClass: 'status-pending',
           totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
-          totalAmountDisplay: car.totalAmount > 0 ? car.totalAmount.toLocaleString() + '원' : '무료'
+          totalAmountDisplay: car.totalAmount > 0 ? car.totalAmount.toLocaleString() + '원' : '무료',
+          discountNames: car.discountNames.length > 0 ? car.discountNames.join(' + ') : '-'
         });
       }
     }
@@ -759,10 +761,10 @@ function renderData(data) {
     const parkingDisplay = row.paidStat === '10' ? '-' : formatTime(row.parkingMinutes);
     const remainDisplay = row.paidStat === '10' ? '-' : formatTime(row.remainTime);
     
-    // ✅ 할인구분 = totalDiscountTime를 시간으로 변환
+    // ✅ 할인구분 = totalDiscountTime를 시간으로 변환 (0분이면 "-" 표시)
     const discountDisplay = row.totalDiscountTime > 0 ? formatTime(row.totalDiscountTime) : '-';
     
-    // ✅ 디버깅: 원본 dc_time을 작은 글씨로 함께 표시
+    // 디버깅용 원본 dc_time (작은 글씨)
     const debugInfo = row.originalDcTime ? ` (${row.originalDcTime})` : '';
 
     tr.innerHTML = `
@@ -812,31 +814,4 @@ function sha256(message) {
   const view = new DataView(bytes.buffer);
   view.setUint32(totalLen - 4, bitLen, false);
   const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
-  let h0=0x6a09e667,h1=0xbb67ae85,h2=0x3c6ef372,h3=0xa54ff53a,h4=0x510e527f,h5=0x9b05688c,h6=0x1f83d9ab,h7=0x5be0cd19;
-  for (let i=0;i<bytes.length;i+=64) {
-    const w=new Uint32Array(64);
-    for (let j=0;j<16;j++) w[j]=(bytes[i+j*4]<<24)|(bytes[i+j*4+1]<<16)|(bytes[i+j*4+2]<<8)|bytes[i+j*4+3];
-    for (let j=16;j<64;j++) {
-      const s0=rightRotate(w[j-15],7)^rightRotate(w[j-15],18)^(w[j-15]>>>3);
-      const s1=rightRotate(w[j-2],17)^rightRotate(w[j-2],19)^(w[j-2]>>>10);
-      w[j]=(w[j-16]+s0+w[j-7]+s1)|0;
-    }
-    let a=h0,b=h1,c=h2,d=h3,e=h4,f=h5,g=h6,h=h7;
-    for (let j=0;j<64;j++) {
-      const S1=rightRotate(e,6)^rightRotate(e,11)^rightRotate(e,25);
-      const ch=(e&f)^(~e&g);
-      const temp1=(h+S1+ch+K[j]+w[j])|0;
-      const S0=rightRotate(a,2)^rightRotate(a,13)^rightRotate(a,22);
-      const maj=(a&b)^(a&c)^(b&c);
-      const temp2=(S0+maj)|0;
-      h=g;g=f;f=e;e=(d+temp1)|0;d=c;c=b;b=a;a=(temp1+temp2)|0;
-    }
-    h0=(h0+a)|0;h1=(h1+b)|0;h2=(h2+c)|0;h3=(h3+d)|0;h4=(h4+e)|0;h5=(h5+f)|0;h6=(h6+g)|0;h7=(h7+h)|0;
-  }
-  function toHex(num){return ('00000000'+(num>>>0).toString(16)).slice(-8);}
-  return toHex(h0)+toHex(h1)+toHex(h2)+toHex(h3)+toHex(h4)+toHex(h5)+toHex(h6)+toHex(h7);
-}
-</script>
-
-</body>
-</html>
+  let h0=0x6a09e667,h1=0xbb67ae85,h2=0x3c6ef372,h3=0xa54ff
