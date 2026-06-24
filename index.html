@@ -489,7 +489,7 @@ function handleLogout() {
 }
 
 // ============================================================
-// 💰 잔액 조회
+// 💰 잔액 조회 (listForDiscount → getForDiscount 체인 방식)
 // ============================================================
 async function fetchBalance() {
   try {
@@ -504,34 +504,67 @@ async function fetchBalance() {
     };
     if (sessionId) headers['Cookie'] = `JSESSIONID=${sessionId}`;
 
-    const response = await fetch(`${PROXY_BASE}/state/doListMst`, {
+    // 1. 차량 목록 조회 (listForDiscount)
+    const listResponse = await fetch(`${PROXY_BASE}/discount/registration/listForDiscount`, {
       method: 'POST',
       headers: headers,
       credentials: 'include',
       body: new URLSearchParams({
-        startDate: dateStr,
-        endDate: dateStr,
-        account_no: 'oasis_g',
-        rowcount: '1'
+        iLotArea: '17574',
+        entryDate: dateStr,
+        carNo: ''
       })
     });
 
-    if (response.ok) {
-      const result = await response.json();
-      const summary = result.summary?.[0] || {};
-      let balance = summary.remainAmount || 
-                    summary.remain_amt || 
-                    summary.dcTimeRemainCharge || 
-                    summary.totalRemain || 0;
+    const listResult = await listResponse.json();
+    let balance = 0;
+
+    if (listResult && listResult.length > 0) {
+      // 2. 첫 번째 차량 ID로 상세 조회 (getForDiscount)
+      const detailResponse = await fetch(`${PROXY_BASE}/discount/registration/getForDiscount`, {
+        method: 'POST',
+        headers: headers,
+        credentials: 'include',
+        body: new URLSearchParams({
+          id: listResult[0].id,
+          member_id: 'oasis_g'
+        })
+      });
+      
+      const detailResult = await detailResponse.json();
+      balance = detailResult.member?.dcTimeRemainCharge || 0;
+      
       currentBalance = balance;
       updateBalanceDisplay(balance);
       localStorage.setItem(BALANCE_KEY, balance.toString());
+      
+      // 잔액 알림 체크
+      if (balance > 0 && balance < THRESHOLD_AMOUNT) {
+        const now = Date.now();
+        const lastShown = lastToastShown['account'] || 0;
+        if (now - lastShown > 5 * 60 * 1000) {
+          lastToastShown['account'] = now;
+          showToast(
+            '⚠️ 계정 잔액 부족',
+            `현재 잔여 금액이 ${balance.toLocaleString()}원 입니다. 충전이 필요합니다. (임계값: ${THRESHOLD_AMOUNT.toLocaleString()}원)`,
+            'danger'
+          );
+        }
+      }
+    } else {
+      // 차량이 없을 때는 localStorage에 저장된 값 사용
+      const savedBalance = localStorage.getItem(BALANCE_KEY);
+      if (savedBalance !== null) {
+        balance = parseInt(savedBalance);
+        currentBalance = balance;
+        updateBalanceDisplay(balance);
+      }
     }
-  } catch (e) {
-    console.warn('잔액 조회 실패:', e);
-    const saved = localStorage.getItem(BALANCE_KEY);
-    if (saved !== null) {
-      currentBalance = parseInt(saved);
+  } catch (error) {
+    console.error('잔액 조회 실패:', error);
+    const savedBalance = localStorage.getItem(BALANCE_KEY);
+    if (savedBalance !== null) {
+      currentBalance = parseInt(savedBalance);
       updateBalanceDisplay(currentBalance);
     }
   }
@@ -730,11 +763,10 @@ async function fetchData() {
       }
     }
 
-    // ✅ 등록시간 기준 내림차순 정렬 (최신 등록이 위로)
+    // 등록시간 기준 내림차순 정렬 (최신 등록이 위로)
     detailedCars.sort((a, b) => {
       if (a.paidStat === '10' && b.paidStat !== '10') return 1;
       if (a.paidStat !== '10' && b.paidStat === '10') return -1;
-      // 같은 상태면 등록시간 내림차순
       if (a.regDate > b.regDate) return -1;
       if (a.regDate < b.regDate) return 1;
       return 0;
@@ -773,7 +805,6 @@ function renderData(data) {
     const parkingDisplay = row.paidStat === '10' ? '-' : formatTime(row.parkingMinutes);
     const remainDisplay = row.paidStat === '10' ? '-' : formatTime(row.remainTime);
     const regDateDisplay = row.regDate ? fncDatetimeFormat(row.regDate) : '-';
-    // ✅ 디버그 정보 제거 (괄호 안 분 표시 없앰)
     const discountDisplay = row.totalDiscountTime > 0 ? formatTime(row.totalDiscountTime) : '-';
 
     tr.innerHTML = `
