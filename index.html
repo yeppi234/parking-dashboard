@@ -489,13 +489,14 @@ function handleLogout() {
 }
 
 // ============================================================
-// 💰 계정 잔여 금액 조회 (iframe 방식 - 할인등록 페이지에서 직접 추출)
+// 💰 계정 잔여 금액 조회 (iframe + Vercel 프록시 경유)
 // ============================================================
 async function fetchBalance() {
   return new Promise((resolve) => {
     try {
       const iframe = document.createElement('iframe');
-      iframe.src = 'https://a17574.parkingweb.kr/discount/registration';
+      // ✅ Vercel 프록시 경유
+      iframe.src = `${PROXY_BASE}/discount/registration`;
       iframe.style.cssText = 'position:absolute;width:0;height:0;border:0;visibility:hidden;';
       document.body.appendChild(iframe);
 
