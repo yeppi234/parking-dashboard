@@ -211,6 +211,17 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.3; }
     }
+
+    /* ✅ 새로운 차량 점멸 효과 */
+    @keyframes blinkNewRow {
+      0% { background-color: #fff3cd; }
+      50% { background-color: #ffeaa7; }
+      100% { background-color: #fff3cd; }
+    }
+    .row-new {
+      animation: blinkNewRow 0.6s ease-in-out 5;
+    }
+
     .empty {
       text-align: center;
       padding: 40px 20px;
@@ -372,6 +383,9 @@ let sessionId = '';
 let lastToastShown = {};
 let currentBalance = 0;
 let balanceCheckCount = 0;
+
+// ✅ 이전 차량 번호 목록 (새 차량 감지용)
+let prevCarNos = new Set();
 
 // ============================================================
 // 🍞 토스트 알림
@@ -590,7 +604,7 @@ function extractMinutesFromDcTime(dcTime) {
 }
 
 // ============================================================
-// 📊 데이터 가져오기
+// 📊 데이터 가져오기 (새 차량 감지 포함)
 // ============================================================
 async function fetchData() {
   try {
@@ -605,7 +619,6 @@ async function fetchData() {
     };
     if (sessionId) headers['Cookie'] = `JSESSIONID=${sessionId}`;
 
-    // ✅ account_no: 'oasis_g' 유지 (데이터 로딩 문제 방지)
     const response = await fetch(`${PROXY_BASE}/state/doListMst`, {
       method: 'POST',
       headers: headers,
@@ -626,6 +639,19 @@ async function fetchData() {
     const result = await response.json();
     const rawData = result.data || [];
     
+    // 현재 차량 번호 목록
+    const currentCarNos = new Set(rawData.map(row => row.carno).filter(Boolean));
+
+    // ✅ 새로 추가된 차량 번호 찾기
+    const newCarNos = [];
+    for (const carNo of currentCarNos) {
+      if (!prevCarNos.has(carNo)) {
+        newCarNos.push(carNo);
+      }
+    }
+    // 이전 목록 업데이트
+    prevCarNos = currentCarNos;
+
     const carMap = new Map();
     for (const row of rawData) {
       const carNo = row.carno;
@@ -639,7 +665,8 @@ async function fetchData() {
           discountNames: [],
           paidStat: row.paid_stat || '00',
           entryId: row.id || '',
-          originalDcTime: row.dc_time || ''
+          originalDcTime: row.dc_time || '',
+          isNew: newCarNos.includes(carNo) // ✅ 새 차량 여부 저장
         });
       }
       const car = carMap.get(carNo);
@@ -697,7 +724,6 @@ async function fetchData() {
           const now = new Date();
           parkingMinutes = Math.floor((now - entry) / 60000);
         }
-        // ✅ 여유시간 = 할인시간 - 주차시간
         const remainTime = Math.max(0, car.totalDiscountTime - parkingMinutes);
         const statusText = remainTime <= 0 ? '미출차 (초과)' : '미출차';
         const statusClass = remainTime <= 0 ? 'status-pending' : 'status-pending';
@@ -740,7 +766,7 @@ async function fetchData() {
 }
 
 // ============================================================
-// 🖥️ 렌더링
+// 🖥️ 렌더링 (새 차량 점멸 효과 포함)
 // ============================================================
 function renderData(data) {
   document.getElementById('statTotal').textContent = data.length;
@@ -778,6 +804,15 @@ function renderData(data) {
       <td class="${remainClass}">${remainDisplay}</td>
       <td><span class="${row.statusClass}">${row.statusText}</span></td>
     `;
+
+    // ✅ 새 차량이면 점멸 클래스 추가 (3초 후 자동 제거)
+    if (row.isNew) {
+      tr.classList.add('row-new');
+      setTimeout(() => {
+        tr.classList.remove('row-new');
+      }, 3000);
+    }
+
     tbody.appendChild(tr);
   });
 }
