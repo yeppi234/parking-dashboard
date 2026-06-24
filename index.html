@@ -454,20 +454,13 @@ async function handleLogin() {
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('mainContent').style.display = 'block';
       
-      try {
-        await fetchBalance();
-      } catch (e) {
-        const saved = localStorage.getItem(BALANCE_KEY);
-        if (saved !== null) {
-          currentBalance = parseInt(saved);
-          updateBalanceDisplay(currentBalance);
-        }
-      }
+      // ✅ 잔액 조회 (iframe 방식)
+      setTimeout(fetchBalance, 1000);
       fetchData();
       setInterval(async () => {
         balanceCheckCount++;
         if (balanceCheckCount % 6 === 0) {
-          try { await fetchBalance(); } catch (e) {}
+          fetchBalance();
         }
         fetchData();
       }, 5000);
@@ -489,9 +482,9 @@ function handleLogout() {
 }
 
 // ============================================================
-// 💰 계정 잔여 금액 조회 (iframe 전용)
+// 💰 계정 잔여 금액 조회 (iframe 방식 - 가장 확실함)
 // ============================================================
-async function fetchBalance() {
+function fetchBalance() {
   return new Promise((resolve) => {
     try {
       const iframe = document.createElement('iframe');
@@ -523,15 +516,15 @@ async function fetchBalance() {
           let balance = 0;
           let el = null;
 
-          // 1️⃣ PC 버전: lblRemainTimeCharge
+          // PC 버전
           el = doc.getElementById('lblRemainTimeCharge');
           
-          // 2️⃣ 모바일 버전: extraCharge input
+          // 모바일 버전
           if (!el || !el.textContent) {
             el = doc.getElementById('extraCharge');
           }
           
-          // 3️⃣ 그래도 없으면 다른 hidden input 검색
+          // hidden input 검색
           if (!el || !el.value) {
             const allInputs = doc.querySelectorAll('input[type="hidden"]');
             for (const input of allInputs) {
