@@ -502,7 +502,7 @@ async function fetchBalance() {
       body: new URLSearchParams({
         startDate: dateStr,
         endDate: dateStr,
-        account_no: '',  // ✅ 빈값으로 전체 조회
+        account_no: 'oasis_g',
         rowcount: '1'
       })
     });
@@ -538,7 +538,7 @@ function updateBalanceDisplay(balance) {
 }
 
 // ============================================================
-// 🔧 dc_time에서 분(minute) 추출
+// 🔧 dc_time에서 분(minute) 추출 (강화 버전)
 // ============================================================
 function extractMinutesFromDcTime(dcTime) {
   if (!dcTime) return 0;
@@ -605,7 +605,7 @@ async function fetchData() {
     };
     if (sessionId) headers['Cookie'] = `JSESSIONID=${sessionId}`;
 
-    // ✅ account_no 필터 제거 (빈값으로 전체 조회)
+    // ✅ account_no: 'oasis_g' 유지 (데이터 로딩 문제 방지)
     const response = await fetch(`${PROXY_BASE}/state/doListMst`, {
       method: 'POST',
       headers: headers,
@@ -613,7 +613,7 @@ async function fetchData() {
       body: new URLSearchParams({
         startDate: dateStr,
         endDate: dateStr,
-        account_no: '',  // ✅ 빈값 = 전체 조회
+        account_no: 'oasis_g',
         rowcount: '50000'
       })
     });
