@@ -538,16 +538,16 @@ function updateBalanceDisplay(balance) {
 }
 
 // ============================================================
-// 🔧 dc_time에서 분(minute) 추출 (강화 버전)
+// 🔧 dc_time에서 분(minute) 추출 (수정된 부분만)
 // ============================================================
 function extractMinutesFromDcTime(dcTime) {
   if (!dcTime) return 0;
   
-  // 1️⃣ 괄호 안 숫자 추출 (예: "4시간 (240)" → 240)
+  // 1️⃣ 괄호 안 숫자 (예: "4시간 (240)" → 240)
   let match = dcTime.match(/\(([\d.]+)\)/);
   if (match) return parseFloat(match[1]) || 0;
   
-  // 2️⃣ "X시간 Y분" 형식 (예: "4시간30분" → 270)
+  // 2️⃣ "X시간 Y분" (예: "4시간30분" → 270)
   let hours = 0, minutes = 0;
   const hourMatch = dcTime.match(/(\d+)\s*시간/);
   const minMatch = dcTime.match(/(\d+)\s*분/);
@@ -555,19 +555,21 @@ function extractMinutesFromDcTime(dcTime) {
   if (minMatch) minutes = parseInt(minMatch[1]);
   if (hours > 0 || minutes > 0) return hours * 60 + minutes;
   
-  // 3️⃣ "X시간"만 있는 경우 (예: "4시간" → 240)
+  // 3️⃣ "X시간"만 (예: "4시간" → 240)
   const onlyHour = dcTime.match(/^(\d+)\s*시간$/);
   if (onlyHour) return parseInt(onlyHour[1]) * 60;
   
-  // 4️⃣ "X분"만 있는 경우 (예: "30분" → 30)
+  // 4️⃣ "X분"만 (예: "30분" → 30)
   const onlyMin = dcTime.match(/^(\d+)\s*분$/);
   if (onlyMin) return parseInt(onlyMin[1]) || 0;
   
-  // 5️⃣ 숫자만 있는 경우 (예: "240" → 240)
-  const numMatch = dcTime.match(/^\d+$/);
-  if (numMatch) return parseInt(numMatch[0]) || 0;
+  // 5️⃣ ✅ 순수 숫자 (예: "120" → 120, "120.0" → 120) - 이 부분만 추가됨
+  const pureNumber = parseFloat(dcTime);
+  if (!isNaN(pureNumber) && pureNumber > 0) {
+    return pureNumber;
+  }
   
-  // 6️⃣ "+"로 연결된 복수 할인 (예: "1시간 + 2시간")
+  // 6️⃣ "+"로 연결 (예: "1시간 + 2시간")
   if (dcTime.includes('+')) {
     const parts = dcTime.split('+');
     let total = 0;
@@ -657,7 +659,6 @@ async function fetchData() {
 
     const detailedCars = [];
     for (const [carNo, car] of carMap) {
-      // ✅ 출차완료 차량도 할인 시간 표시
       if (car.paidStat === '10') {
         detailedCars.push({
           ...car,
@@ -737,7 +738,7 @@ async function fetchData() {
 }
 
 // ============================================================
-// 🖥️ 렌더링 (할인구분 = totalDiscountTime을 시간으로 변환)
+// 🖥️ 렌더링
 // ============================================================
 function renderData(data) {
   document.getElementById('statTotal').textContent = data.length;
@@ -761,10 +762,7 @@ function renderData(data) {
     const parkingDisplay = row.paidStat === '10' ? '-' : formatTime(row.parkingMinutes);
     const remainDisplay = row.paidStat === '10' ? '-' : formatTime(row.remainTime);
     
-    // ✅ 할인구분 = totalDiscountTime를 시간으로 변환 (0분이면 "-" 표시)
     const discountDisplay = row.totalDiscountTime > 0 ? formatTime(row.totalDiscountTime) : '-';
-    
-    // 디버깅용 원본 dc_time (작은 글씨)
     const debugInfo = row.originalDcTime ? ` (${row.originalDcTime})` : '';
 
     tr.innerHTML = `
