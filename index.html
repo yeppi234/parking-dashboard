@@ -410,12 +410,7 @@
   </div>
 </div>
 
-<script type="module">
-// ============================================================
-// ✅ Vercel KV (Redis) import
-// ============================================================
-import { kv } from '@vercel/kv';
-
+<script>
 // ============================================================
 // ✅ Vercel 프록시 주소
 // ============================================================
@@ -744,6 +739,35 @@ function parseDate(dateStr) {
 }
 
 // ============================================================
+// ✅ KV 데이터 불러오기 (프록시 API 통해)
+// ============================================================
+async function loadCompletedCars() {
+  try {
+    const response = await fetch(`${PROXY_BASE}/kv`);
+    const result = await response.json();
+    return result.data || [];
+  } catch (e) {
+    console.warn('⚠️ KV 로드 실패:', e);
+    return [];
+  }
+}
+
+// ============================================================
+// ✅ KV 데이터 저장 (프록시 API 통해)
+// ============================================================
+async function saveCompletedCars(data) {
+  try {
+    await fetch(`${PROXY_BASE}/kv`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data })
+    });
+  } catch (e) {
+    console.warn('⚠️ KV 저장 실패:', e);
+  }
+}
+
+// ============================================================
 // 📊 데이터 가져오기 (출차 기록 저장 포함)
 // ============================================================
 async function fetchData() {
@@ -782,15 +806,8 @@ async function fetchData() {
     // ✅ 현재 주차 중인 차량 번호 목록
     const currentCarNos = new Set(rawData.map(row => row.carno).filter(Boolean));
     
-    // ✅ 이전에 저장된 출차 완료 차량 불러오기
-    let completedCars = [];
-    try {
-      const saved = await kv.get('completedCars');
-      completedCars = saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      console.warn('⚠️ Redis 조회 실패:', e);
-      completedCars = [];
-    }
+    // ✅ 이전에 저장된 출차 완료 차량 불러오기 (프록시 API 통해)
+    let completedCars = await loadCompletedCars();
     
     // ✅ 현재 주차 목록에 없는 차량 = 출차됨 (completedCars 유지)
     const validCompleted = completedCars.filter(car => !currentCarNos.has(car.carNo));
@@ -849,11 +866,8 @@ async function fetchData() {
             exitTime: new Date().toISOString(),
             totalDiscountTime: car.totalDiscountTime
           });
-          try {
-            await kv.set('completedCars', JSON.stringify(completedCars), { ex: 86400 });
-          } catch (e) {
-            console.warn('⚠️ Redis 저장 실패:', e);
-          }
+          // ✅ KV에 저장 (프록시 API 통해)
+          await saveCompletedCars(completedCars);
         }
       } else {
         // ✅ 미출차: 주차시간 실시간 계산
@@ -1032,9 +1046,6 @@ window.openThresholdModal = openThresholdModal;
 window.closeThresholdModal = closeThresholdModal;
 window.saveThreshold = saveThreshold;
 window.closeToast = closeToast;
-window.fncPopupAccount = fncPopupAccount;
-window.fncPopupAcPlate = fncPopupAcPlate;
-window.fncPrint = fncPrint;
 </script>
 
 </body>
