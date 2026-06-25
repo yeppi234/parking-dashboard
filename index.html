@@ -768,6 +768,35 @@ async function saveCompletedCars(data) {
 }
 
 // ============================================================
+// ✅ 개별 차량 주차시간 저장 (출차 시 사용)
+// ============================================================
+async function saveParkingTime(carNo, minutes) {
+  try {
+    await fetch(`${PROXY_BASE}/kv/parking`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ carNo, minutes })
+    });
+  } catch (e) {
+    console.warn('⚠️ 주차시간 저장 실패:', e);
+  }
+}
+
+// ============================================================
+// ✅ 개별 차량 주차시간 불러오기
+// ============================================================
+async function loadParkingTime(carNo) {
+  try {
+    const response = await fetch(`${PROXY_BASE}/kv/parking?carNo=${carNo}`);
+    const result = await response.json();
+    return result.minutes || 0;
+  } catch (e) {
+    console.warn('⚠️ 주차시간 로드 실패:', e);
+    return 0;
+  }
+}
+
+// ============================================================
 // 📊 데이터 가져오기 (출차 기록 저장 포함)
 // ============================================================
 async function fetchData() {
@@ -825,7 +854,8 @@ async function fetchData() {
           entryDate: row.entry_date || '',
           discountNames: [],
           paidStat: row.paid_stat || '00',
-          isNew: false
+          isNew: false,
+          currentParkingMinutes: 0  // ✅ 현재 주차시간 저장용
         });
       }
       const car = carMap.get(carNo);
@@ -850,9 +880,25 @@ async function fetchData() {
       let statusText = '미출차';
       let statusClass = 'status-pending';
       
-      // ✅ 출차여부 판단 (paidStat === '10' 이면 출차완료)
-      if (car.paidStat === '10') {
-        parkingMinutes = 0;
+      // ✅ 미출차: 주차시간 실시간 계산 및 저장
+      if (car.paidStat !== '10') {
+        if (car.entryDate) {
+          const entry = parseDate(car.entryDate);
+          parkingMinutes = Math.floor((now - entry) / 60000);
+          car.currentParkingMinutes = parkingMinutes;
+          
+          // ✅ KV에 현재 주차시간 저장 (출차 시 사용)
+          await saveParkingTime(carNo, parkingMinutes);
+        }
+        remainTime = Math.max(0, car.totalDiscountTime - parkingMinutes);
+        if (remainTime <= 0) {
+          statusText = '미출차 (초과)';
+          statusClass = 'status-overdue';
+        }
+      } else {
+        // ✅ 출차완료: 저장된 마지막 주차시간 사용
+        const savedMinutes = await loadParkingTime(carNo);
+        parkingMinutes = savedMinutes || 0;
         remainTime = 0;
         statusText = '출차완료';
         statusClass = 'status-complete';
@@ -862,23 +908,11 @@ async function fetchData() {
         if (!exists) {
           completedCars.push({
             carNo: car.carNo,
-            parkingMinutes: 0,
+            parkingMinutes: parkingMinutes,
             exitTime: new Date().toISOString(),
             totalDiscountTime: car.totalDiscountTime
           });
-          // ✅ KV에 저장 (프록시 API 통해)
           await saveCompletedCars(completedCars);
-        }
-      } else {
-        // ✅ 미출차: 주차시간 실시간 계산
-        if (car.entryDate) {
-          const entry = parseDate(car.entryDate);
-          parkingMinutes = Math.floor((now - entry) / 60000);
-        }
-        remainTime = Math.max(0, car.totalDiscountTime - parkingMinutes);
-        if (remainTime <= 0) {
-          statusText = '미출차 (초과)';
-          statusClass = 'status-overdue';
         }
       }
       
@@ -905,7 +939,7 @@ async function fetchData() {
           discountNames: [],
           paidStat: '10',
           isNew: false,
-          parkingMinutes: 0,
+          parkingMinutes: completed.parkingMinutes || 0,
           remainTime: 0,
           statusText: '출차완료',
           statusClass: 'status-complete',
