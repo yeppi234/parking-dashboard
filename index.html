@@ -226,7 +226,7 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 13px;
-      min-width: 800px;
+      min-width: 700px;
     }
     thead {
       background: #f8fafc;
@@ -251,24 +251,6 @@
       text-decoration: underline;
     }
     .discount-detail-btn:hover { color: #2563eb; }
-    .badge-oasis {
-      display: inline-block;
-      background: #dbeafe;
-      color: #1d4ed8;
-      font-size: 10px;
-      padding: 1px 6px;
-      border-radius: 10px;
-      margin-left: 4px;
-    }
-    .badge-other {
-      display: inline-block;
-      background: #fee2e2;
-      color: #dc2626;
-      font-size: 10px;
-      padding: 1px 6px;
-      border-radius: 10px;
-      margin-left: 4px;
-    }
 
     .auto-refresh-badge {
       display: inline-block;
@@ -944,7 +926,7 @@ async function fetchData() {
           entryDate: row.entry_date || '',
           discountNames: [],
           discountDetails: [],
-          hasOasis: false,      // oasis_g 포함 여부
+          hasOasis: false,
           paidStat: row.paid_stat || '00',
           isNew: false
         });
@@ -952,7 +934,7 @@ async function fetchData() {
       const car = carMap.get(carNo);
       
       const minutes = extractMinutesFromDcTime(row.dc_time);
-      car.totalDiscountTime += minutes;  // ✅ 전체 합산
+      car.totalDiscountTime += minutes;
       
       car.discountDetails.push({
         discountName: row.discount_name || '',
@@ -964,7 +946,6 @@ async function fetchData() {
         paidStat: row.paid_stat || '00'
       });
       
-      // ✅ oasis_g 포함 여부 체크
       if (row.account_no === 'oasis_g') {
         car.hasOasis = true;
       }
@@ -980,13 +961,12 @@ async function fetchData() {
     // ✅ 3. oasis_g가 포함된 차량만 필터링
     const filteredCars = [];
     for (const [carNo, car] of carMap) {
-      if (car.hasOasis) {  // ✅ oasis_g가 있으면 포함
+      if (car.hasOasis) {
         filteredCars.push(car);
       }
-      // ❌ oasis_g가 없으면 제외
     }
 
-    // ✅ 4. 현재 주차 중인 차량 번호 목록 (필터링된 차량 기준)
+    // ✅ 4. 현재 주차 중인 차량 번호 목록
     const currentCarNos = new Set(filteredCars.map(car => car.carNo));
     
     let completedCars = await loadCompletedCars();
@@ -1037,9 +1017,6 @@ async function fetchData() {
         }
       }
       
-      // 표시용 할인내역명
-      const uniqueNames = [...new Set(car.discountNames)];
-      
       detailedCars.push({
         ...car,
         parkingMinutes: parkingMinutes,
@@ -1047,7 +1024,6 @@ async function fetchData() {
         statusText: statusText,
         statusClass: statusClass,
         totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
-        discountNames: uniqueNames.length > 0 ? uniqueNames.join(' + ') : '-',
         discountDetails: car.discountDetails
       });
     }
@@ -1061,10 +1037,9 @@ async function fetchData() {
       await saveCompletedCars(completedCars);
     }
 
-    // 출차 완료 차량 추가 (필터링된 차량 중)
+    // 출차 완료 차량 추가
     for (const completed of completedCars) {
       if (!detailedCars.some(c => c.carNo === completed.carNo && c.paidStat === '10')) {
-        // 완료된 차량이 필터링된 차량에 포함되어 있는지 확인
         const isFiltered = filteredCars.some(c => c.carNo === completed.carNo);
         if (isFiltered) {
           detailedCars.push({
@@ -1118,7 +1093,7 @@ function showDiscountDetails(carNo) {
   document.getElementById('detailModalTitle').textContent = `🚗 ${carNo} 할인내역`;
   
   let html = '<table>';
-  html += `<tr><th>할인명</th><th>할인값</th><th>등록자</th><th>등록시간</th><th>상태</th></tr>`;
+  html += `<tr><th>구분</th><th>할인명</th><th>할인값</th><th>등록자</th><th>등록시간</th><th>상태</th></tr>`;
   
   for (const detail of car.discountDetails) {
     const status = detail.paidStat === '10' ? '출차완료' : '미출차';
@@ -1173,11 +1148,12 @@ function renderData(data) {
     const remainDisplay = formatTime(row.remainTime);
     const regDateDisplay = row.regDate ? fncDatetimeFormat(row.regDate) : '-';
     
-    // 할인내역 표시 (클릭 가능)
+    // ✅ 할인내역: 합산된 총 시간만 표시 (클릭하면 상세보기)
     const hasDetails = row.discountDetails && row.discountDetails.length > 0;
+    const totalTimeDisplay = row.totalDiscountTime > 0 ? formatTime(row.totalDiscountTime) : '0분';
     const discountDisplay = hasDetails 
-      ? `<span class="discount-detail-btn" onclick="showDiscountDetails('${row.carNo}')">${row.discountNames} ▼</span>`
-      : (row.discountNames || '-');
+      ? `<span class="discount-detail-btn" onclick="showDiscountDetails('${row.carNo}')">${totalTimeDisplay} ▼</span>`
+      : (row.totalDiscountTime > 0 ? totalTimeDisplay : '-');
 
     tr.innerHTML = `
       <td>${idx + 1}</td>
