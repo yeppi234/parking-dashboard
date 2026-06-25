@@ -816,53 +816,21 @@ async function fetchData() {
 
     const detailedCars = [];
     for (const [carNo, car] of carMap) {
-      // 출차완료 차량도 실제 주차시간과 여유시간 계산
+      // ✅ 출차완료 차량은 getForDiscount를 호출하지 않음 (500 오류 방지)
       if (car.paidStat === '10') {
-        try {
-          const detailResponse = await fetch(`${PROXY_BASE}/discount/registration/getForDiscount`, {
-            method: 'POST',
-            headers: headers,
-            credentials: 'include',
-            body: new URLSearchParams({ id: car.entryId, member_id: 'oasis_g' })
-          });
-          const detail = await detailResponse.json();
-          const parkEntry = detail.parkEntry || {};
-          
-          const entryDate = parkEntry.dtInDate || car.entryDate;
-          const exitDate = parkEntry.dtOutDate || '';
-          let parkingMinutes = 0;
-          if (entryDate && exitDate) {
-            const entry = parseDate(entryDate);
-            const exit = parseDate(exitDate);
-            parkingMinutes = Math.floor((exit - entry) / 60000);
-          }
-          
-          const remainTime = Math.max(0, car.totalDiscountTime - parkingMinutes);
-          
-          detailedCars.push({
-            ...car,
-            parkingMinutes: parkingMinutes,
-            remainTime: remainTime,
-            statusText: '출차완료',
-            statusClass: 'status-complete',
-            totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
-            discountNames: car.discountNames.length > 0 ? car.discountNames.join(' + ') : '-'
-          });
-        } catch (e) {
-          detailedCars.push({
-            ...car,
-            parkingMinutes: 0,
-            remainTime: 0,
-            statusText: '출차완료',
-            statusClass: 'status-complete',
-            totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
-            discountNames: car.discountNames.length > 0 ? car.discountNames.join(' + ') : '-'
-          });
-        }
+        detailedCars.push({
+          ...car,
+          parkingMinutes: 0,
+          remainTime: 0,
+          statusText: '출차완료',
+          statusClass: 'status-complete',
+          totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
+          discountNames: car.discountNames.length > 0 ? car.discountNames.join(' + ') : '-'
+        });
         continue;
       }
       
-      // 미출차 차량
+      // 미출차 차량만 getForDiscount 호출
       try {
         const detailResponse = await fetch(`${PROXY_BASE}/discount/registration/getForDiscount`, {
           method: 'POST',
@@ -870,6 +838,21 @@ async function fetchData() {
           credentials: 'include',
           body: new URLSearchParams({ id: car.entryId, member_id: 'oasis_g' })
         });
+        
+        if (!detailResponse.ok) {
+          console.warn(`⚠️ getForDiscount 실패 (${detailResponse.status}):`, car.entryId);
+          detailedCars.push({
+            ...car,
+            parkingMinutes: 0,
+            remainTime: 0,
+            statusText: '데이터 없음',
+            statusClass: 'status-pending',
+            totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
+            discountNames: car.discountNames.length > 0 ? car.discountNames.join(' + ') : '-'
+          });
+          continue;
+        }
+        
         const detail = await detailResponse.json();
         const parkEntry = detail.parkEntry || {};
         const entryDate = parkEntry.dtInDate || car.entryDate;
@@ -896,11 +879,12 @@ async function fetchData() {
           discountNames: car.discountNames.length > 0 ? car.discountNames.join(' + ') : '-'
         });
       } catch (e) {
+        console.warn('⚠️ getForDiscount 예외:', e.message);
         detailedCars.push({
           ...car,
           parkingMinutes: 0,
           remainTime: 0,
-          statusText: '미출차',
+          statusText: '데이터 없음',
           statusClass: 'status-pending',
           totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
           discountNames: car.discountNames.length > 0 ? car.discountNames.join(' + ') : '-'
