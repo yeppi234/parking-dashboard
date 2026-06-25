@@ -450,7 +450,7 @@
   </div>
 </div>
 
-<!-- 토스트 알림 (닫기 버튼 없음) -->
+<!-- 토스트 알림 -->
 <div class="toast-container" id="toastContainer">
   <span class="toast-title" id="toastTitle">⚠️ 계정 잔액 부족</span>
   <span class="toast-message" id="toastMessage">잔여 금액이 10,000원 미만입니다. 충전이 필요합니다.</span>
@@ -502,7 +502,7 @@
       <div class="stat-label">💰 계정 잔여 금액</div>
       <div style="display: flex; align-items: center; gap: 8px;">
         <div class="stat-value" id="statRemain">0원</div>
-        <button class="refresh-balance-btn" onclick="refreshBalance(true)" title="잔액 새로고침">🔄</button>
+        <button class="refresh-balance-btn" onclick="fetchData()" title="잔액 새로고침">🔄</button>
       </div>
     </div>
   </div>
@@ -544,12 +544,11 @@ let THRESHOLD_AMOUNT = parseInt(localStorage.getItem(STORAGE_KEY)) || 10000;
 let sessionId = '';
 let lastToastShown = {};
 let currentBalance = 0;
-let balanceCheckCount = 0;
 let prevCarNos = new Set();
 let allCarsData = [];
 
 // ============================================================
-// 🍞 토스트 알림 (닫기 버튼 없음, 자동 닫힘)
+// 🍞 토스트 알림 (자동 닫힘)
 // ============================================================
 function showToast(title, message, type = 'warning') {
   const container = document.getElementById('toastContainer');
@@ -587,7 +586,7 @@ function saveThreshold() {
 }
 
 // ============================================================
-// 🔐 로그인 (로그인 응답 HTML에서 잔액 추출)
+// 🔐 로그인
 // ============================================================
 async function handleLogin() {
   const id = document.getElementById('loginId').value;
@@ -640,8 +639,7 @@ async function handleLogin() {
       document.getElementById('mainContent').style.display = 'block';
       
       fetchData();
-      setInterval(async () => {
-        await refreshBalance(false);
+      setInterval(() => {
         fetchData();
       }, 5000);
     } else {
@@ -696,21 +694,14 @@ function extractBalanceFromHTML(html) {
   }
 }
 
-// ✅ 주기적 잔액 갱신 (showAlert: true면 토스트 표시)
+// ✅ 잔액 갱신 (credentials: include 추가)
 async function refreshBalance(showAlert = false) {
   console.log('🔄 잔액 갱신 시작...');
   try {
-    const headers = {
-      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      'X-Requested-With': 'XMLHttpRequest'
-    };
-    if (sessionId) {
-      headers['Cookie'] = `JSESSIONID=${sessionId}`;
-    }
-    
     const response = await fetch(`${PROXY_BASE}/discount/registration`, {
-      headers: headers
+      credentials: 'include'
     });
+    
     const html = await response.text();
     const balance = extractBalanceFromHTML(html);
     
@@ -724,7 +715,6 @@ async function refreshBalance(showAlert = false) {
         showToast('✅ 잔액 갱신 완료', `${balance.toLocaleString()}원`, 'success');
       }
       
-      // 잔액 부족 알림 (토스트로, 자동 닫힘)
       if (balance < THRESHOLD_AMOUNT) {
         showToast('⚠️ 계정 잔액 부족', `현재 잔여 금액이 ${balance.toLocaleString()}원 입니다. (임계값: ${THRESHOLD_AMOUNT.toLocaleString()}원)`, 'warning');
       }
@@ -881,10 +871,13 @@ async function loadAllParkingTimes() {
 }
 
 // ============================================================
-// 📊 데이터 가져오기
+// 📊 데이터 가져오기 (잔액 갱신 포함)
 // ============================================================
 async function fetchData() {
   try {
+    // ✅ 데이터 가져오기 전에 잔액 갱신 (토스트 없이)
+    await refreshBalance(false);
+    
     const today = new Date();
     const dateStr = today.getFullYear() +
       String(today.getMonth() + 1).padStart(2, '0') +
@@ -1233,6 +1226,7 @@ window.saveThreshold = saveThreshold;
 window.showDiscountDetails = showDiscountDetails;
 window.closeDetailModal = closeDetailModal;
 window.refreshBalance = refreshBalance;
+window.fetchData = fetchData;
 </script>
 
 </body>
