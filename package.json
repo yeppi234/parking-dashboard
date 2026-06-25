@@ -1,7 +1,6 @@
 {
   "name": "parking-dashboard",
   "version": "1.0.0",
-  "description": "실시간 할인등록 현황 대시보드",
   "type": "module",
   "dependencies": {
     "@vercel/kv": "^1.0.0"
