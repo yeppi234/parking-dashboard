@@ -211,6 +211,21 @@
     .stat-value.warning { color: #d97706; }
     .stat-value.success { color: #16a34a; }
 
+    /* ✅ 잔액 새로고침 버튼 */
+    .refresh-balance-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .refresh-balance-btn:hover {
+      background: #f0f0f0;
+      transform: rotate(180deg);
+    }
+
     .table-wrap {
       background: white;
       border-radius: 12px;
@@ -486,8 +501,17 @@
   </div>
 
   <div class="stats" id="statsContainer">
-    <div class="stat-card"><div class="stat-label">등록대수</div><div class="stat-value" id="statTotal">0</div></div>
-    <div class="stat-card"><div class="stat-label">💰 계정 잔여 금액</div><div class="stat-value" id="statRemain">0원</div></div>
+    <div class="stat-card">
+      <div class="stat-label">등록대수</div>
+      <div class="stat-value" id="statTotal">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">💰 계정 잔여 금액</div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="stat-value" id="statRemain">0원</div>
+        <button class="refresh-balance-btn" onclick="refreshBalance()" title="잔액 새로고침">🔄</button>
+      </div>
+    </div>
   </div>
 
   <div class="table-wrap">
@@ -601,7 +625,11 @@ async function handleLogin() {
     const setCookieHeader = response.headers.get('set-cookie');
     if (setCookieHeader) {
       const match = setCookieHeader.match(/JSESSIONID=([^;]+)/);
-      if (match) sessionId = match[1];
+      if (match) {
+        sessionId = match[1];
+        document.cookie = `JSESSIONID=${sessionId}; path=/;`;
+        console.log('✅ 세션 ID 저장됨:', sessionId);
+      }
     }
 
     // ✅ 응답 HTML에서 바로 잔액 추출
@@ -683,11 +711,21 @@ function extractBalanceFromHTML(html) {
 
 // ✅ 주기적 잔액 갱신
 async function refreshBalance() {
+  console.log('🔄 잔액 갱신 시작...');
   try {
+    const headers = {
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      'X-Requested-With': 'XMLHttpRequest'
+    };
+    if (sessionId) {
+      headers['Cookie'] = `JSESSIONID=${sessionId}`;
+      console.log('🍪 세션 ID 사용:', sessionId);
+    } else {
+      console.warn('⚠️ sessionId가 없습니다!');
+    }
+    
     const response = await fetch(`${PROXY_BASE}/discount/registration`, {
-      headers: {
-        'Cookie': document.cookie
-      }
+      headers: headers
     });
     const html = await response.text();
     const balance = extractBalanceFromHTML(html);
@@ -697,9 +735,13 @@ async function refreshBalance() {
       localStorage.setItem(BALANCE_KEY, balance.toString());
       updateBalanceDisplay(balance);
       console.log('💰 잔액 갱신:', balance);
+      showToast('✅ 잔액 갱신 완료', `${balance.toLocaleString()}원`, 'success');
+    } else {
+      console.warn('⚠️ 잔액이 0이거나 추출 실패');
     }
   } catch (e) {
     console.warn('⚠️ 잔액 갱신 실패:', e);
+    showToast('❌ 갱신 실패', '잔액을 불러오지 못했습니다.', 'error');
   }
 }
 
@@ -710,15 +752,18 @@ function handleLogout() {
   sessionId = '';
   currentBalance = 0;
   prevCarNos = new Set();
+  document.cookie = 'JSESSIONID=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
 }
 
 function updateBalanceDisplay(balance) {
   const el = document.getElementById('statRemain');
-  el.textContent = balance.toLocaleString() + '원';
-  el.className = 'stat-value';
-  if (balance <= 0) el.classList.add('danger');
-  else if (balance < THRESHOLD_AMOUNT) el.classList.add('warning');
-  else el.classList.add('success');
+  if (el) {
+    el.textContent = balance.toLocaleString() + '원';
+    el.className = 'stat-value';
+    if (balance <= 0) el.classList.add('danger');
+    else if (balance < THRESHOLD_AMOUNT) el.classList.add('warning');
+    else el.classList.add('success');
+  }
 }
 
 // ============================================================
@@ -1191,6 +1236,7 @@ window.saveThreshold = saveThreshold;
 window.closeToast = closeToast;
 window.showDiscountDetails = showDiscountDetails;
 window.closeDetailModal = closeDetailModal;
+window.refreshBalance = refreshBalance;
 </script>
 
 </body>
