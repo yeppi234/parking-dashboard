@@ -251,6 +251,24 @@
       text-decoration: underline;
     }
     .discount-detail-btn:hover { color: #2563eb; }
+    .badge-oasis {
+      display: inline-block;
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      margin-left: 4px;
+    }
+    .badge-other {
+      display: inline-block;
+      background: #fee2e2;
+      color: #dc2626;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      margin-left: 4px;
+    }
 
     .auto-refresh-badge {
       display: inline-block;
@@ -331,7 +349,6 @@
     .toast-warning { border-left: 4px solid #f59e0b; }
     .toast-danger { border-left: 4px solid #ef4444; }
 
-    /* 할인내역 상세 모달 */
     .detail-modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -387,6 +404,14 @@
       cursor: pointer;
     }
     .detail-modal-close:hover { background: #c0392b; }
+    .detail-total-time {
+      margin-top: 12px;
+      padding: 10px;
+      background: #f0f7ff;
+      border-radius: 8px;
+      text-align: center;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -499,7 +524,7 @@ let lastToastShown = {};
 let currentBalance = 0;
 let balanceCheckCount = 0;
 let prevCarNos = new Set();
-let allCarsData = []; // 전체 차량 데이터 저장 (할인내역 모달용)
+let allCarsData = [];
 
 // ============================================================
 // 🍞 토스트 알림
@@ -752,32 +777,46 @@ function updateBalanceDisplay(balance) {
 }
 
 // ============================================================
-// 🔧 dc_time에서 분 추출
+// 🔧 dc_time에서 분 추출 (강화된 버전)
 // ============================================================
 function extractMinutesFromDcTime(dcTime) {
   if (!dcTime) return 0;
   
+  // 1. "(240.0)" 형태에서 숫자 추출
   let match = dcTime.match(/\(([\d.]+)\)/);
-  if (match) return parseFloat(match[1]) || 0;
+  if (match) {
+    return parseFloat(match[1]) || 0;
+  }
   
+  // 2. "4시간 30분" 형태 처리
   let hours = 0, minutes = 0;
   const hourMatch = dcTime.match(/(\d+)\s*시간/);
   const minMatch = dcTime.match(/(\d+)\s*분/);
   if (hourMatch) hours = parseInt(hourMatch[1]);
   if (minMatch) minutes = parseInt(minMatch[1]);
-  if (hours > 0 || minutes > 0) return hours * 60 + minutes;
+  if (hours > 0 || minutes > 0) {
+    return hours * 60 + minutes;
+  }
   
+  // 3. "4시간" 형태 (분 없음)
   const onlyHour = dcTime.match(/^(\d+)\s*시간$/);
-  if (onlyHour) return parseInt(onlyHour[1]) * 60;
+  if (onlyHour) {
+    return parseInt(onlyHour[1]) * 60;
+  }
   
+  // 4. "30분" 형태 (시간 없음)
   const onlyMin = dcTime.match(/^(\d+)\s*분$/);
-  if (onlyMin) return parseInt(onlyMin[1]) || 0;
+  if (onlyMin) {
+    return parseInt(onlyMin[1]) || 0;
+  }
   
+  // 5. 순수 숫자
   const pureNumber = parseFloat(dcTime);
   if (!isNaN(pureNumber) && pureNumber > 0) {
     return pureNumber;
   }
   
+  // 6. "1시간 30분 + 2시간" 형태 (합산)
   if (dcTime.includes('+')) {
     const parts = dcTime.split('+');
     let total = 0;
@@ -787,9 +826,10 @@ function extractMinutesFromDcTime(dcTime) {
     return total;
   }
   
-  const spaceMatch = dcTime.match(/(\d+)\s*시간\s*(\d+)\s*분/);
-  if (spaceMatch) {
-    return parseInt(spaceMatch[1]) * 60 + parseInt(spaceMatch[2]);
+  // 7. "1시간30분" 형태 (띄어쓰기 없음)
+  const compactMatch = dcTime.match(/(\d+)시간\s*(\d+)분/);
+  if (compactMatch) {
+    return parseInt(compactMatch[1]) * 60 + parseInt(compactMatch[2]);
   }
   
   console.warn('⚠️ 파싱 실패한 dc_time:', dcTime);
@@ -812,7 +852,7 @@ function parseDate(dateStr) {
 }
 
 // ============================================================
-// ✅ KV 데이터 불러오기 (프록시 API 통해)
+// ✅ KV 데이터 불러오기
 // ============================================================
 async function loadCompletedCars() {
   try {
@@ -825,9 +865,6 @@ async function loadCompletedCars() {
   }
 }
 
-// ============================================================
-// ✅ KV 데이터 저장 (프록시 API 통해)
-// ============================================================
 async function saveCompletedCars(data) {
   try {
     await fetch(`${PROXY_BASE}/kv`, {
@@ -840,9 +877,6 @@ async function saveCompletedCars(data) {
   }
 }
 
-// ============================================================
-// ✅ 모든 차량 주차시간 저장 (프록시 API 통해)
-// ============================================================
 async function saveAllParkingTimes(data) {
   try {
     await fetch(`${PROXY_BASE}/kv/parking/all`, {
@@ -855,9 +889,6 @@ async function saveAllParkingTimes(data) {
   }
 }
 
-// ============================================================
-// ✅ 모든 차량 주차시간 불러오기 (프록시 API 통해)
-// ============================================================
 async function loadAllParkingTimes() {
   try {
     const response = await fetch(`${PROXY_BASE}/kv/parking/all`);
@@ -870,7 +901,7 @@ async function loadAllParkingTimes() {
 }
 
 // ============================================================
-// 📊 데이터 가져오기 (모든 계정 할인내역 포함)
+// 📊 데이터 가져오기
 // ============================================================
 async function fetchData() {
   try {
@@ -885,7 +916,7 @@ async function fetchData() {
     };
     if (sessionId) headers['Cookie'] = `JSESSIONID=${sessionId}`;
 
-    // ✅ account_no를 ''(전체)로 변경하여 모든 계정 조회
+    // ✅ 전체 계정 조회 (건물 전체)
     const response = await fetch(`${PROXY_BASE}/state/doListMst`, {
       method: 'POST',
       headers: headers,
@@ -893,7 +924,7 @@ async function fetchData() {
       body: new URLSearchParams({
         startDate: dateStr,
         endDate: dateStr,
-        account_no: '',  // ✅ 전체 계정
+        account_no: '',  // 전체 계정
         rowcount: '50000'
       })
     });
@@ -906,18 +937,17 @@ async function fetchData() {
     const result = await response.json();
     const rawData = result.data || [];
     
-    // ✅ 현재 주차 중인 차량 번호 목록
     const currentCarNos = new Set(rawData.map(row => row.carno).filter(Boolean));
     
-    // ✅ 이전에 저장된 출차 완료 차량 불러오기
     let completedCars = await loadCompletedCars();
     const validCompleted = completedCars.filter(car => !currentCarNos.has(car.carNo));
     completedCars = validCompleted;
 
-    // ✅ 저장된 모든 주차시간 불러오기 (한 번에)
     const savedParkingTimes = await loadAllParkingTimes();
 
     const carMap = new Map();
+    
+    // ✅ 모든 데이터 처리 (전체 업체 합산)
     for (const row of rawData) {
       const carNo = row.carno;
       if (!carNo) continue;
@@ -929,17 +959,24 @@ async function fetchData() {
           regDate: row.reg_date || '',
           entryDate: row.entry_date || '',
           discountNames: [],
-          discountDetails: [],  // ✅ 상세 내역
+          discountDetails: [],
+          oasisNames: [],
+          oasisDetails: [],
+          otherNames: [],
+          otherDetails: [],
           paidStat: row.paid_stat || '00',
-          isNew: false
+          isNew: false,
+          hasOasis: false,
+          hasOther: false
         });
       }
       const car = carMap.get(carNo);
       
+      // ✅ 분으로 변환 후 합산
       const minutes = extractMinutesFromDcTime(row.dc_time);
       car.totalDiscountTime += minutes;
       
-      // ✅ 할인내역 상세 저장 (등록자 포함)
+      // 상세 내역 저장
       car.discountDetails.push({
         discountName: row.discount_name || '',
         discountTime: row.dc_time || '',
@@ -951,6 +988,35 @@ async function fetchData() {
         paidStat: row.paid_stat || '00'
       });
       
+      // oasis_g와 다른업체 구분
+      if (row.account_no === 'oasis_g') {
+        car.hasOasis = true;
+        car.oasisNames.push(row.discount_name || '');
+        car.oasisDetails.push({
+          discountName: row.discount_name || '',
+          discountTime: row.dc_time || '',
+          minutes: minutes,
+          registrant: row.account_no || '',
+          registrantName: row.name || '',
+          regDate: row.reg_date || '',
+          id: row.id || '',
+          paidStat: row.paid_stat || '00'
+        });
+      } else {
+        car.hasOther = true;
+        car.otherNames.push(row.discount_name || '');
+        car.otherDetails.push({
+          discountName: row.discount_name || '',
+          discountTime: row.dc_time || '',
+          minutes: minutes,
+          registrant: row.account_no || '',
+          registrantName: row.name || '',
+          regDate: row.reg_date || '',
+          id: row.id || '',
+          paidStat: row.paid_stat || '00'
+        });
+      }
+      
       if (row.discount_name && !car.discountNames.includes(row.discount_name)) {
         car.discountNames.push(row.discount_name);
       }
@@ -959,7 +1025,6 @@ async function fetchData() {
       if (row.paid_stat) car.paidStat = row.paid_stat;
     }
 
-    // ✅ 현재 주차시간을 저장할 객체
     const currentParkingTimes = {};
     const detailedCars = [];
     const now = new Date();
@@ -972,25 +1037,23 @@ async function fetchData() {
       let statusClass = 'status-pending';
       
       if (car.paidStat !== '10') {
-        // ✅ 미출차: 주차시간 실시간 계산
         if (car.entryDate) {
           const entry = parseDate(car.entryDate);
           parkingMinutes = Math.floor((now - entry) / 60000);
           currentParkingTimes[carNo] = parkingMinutes;
         }
+        // ✅ 전체 할인시간으로 여유시간 계산
         remainTime = Math.max(0, car.totalDiscountTime - parkingMinutes);
         if (remainTime <= 0) {
           statusText = '미출차 (초과)';
           statusClass = 'status-overdue';
         }
       } else {
-        // ✅ 출차완료: 저장된 주차시간 사용
         parkingMinutes = savedParkingTimes[carNo] || 0;
         remainTime = 0;
         statusText = '출차완료';
         statusClass = 'status-complete';
         
-        // ✅ 출차 기록 저장 (24시간 유지)
         const exists = completedCars.some(c => c.carNo === carNo);
         if (!exists) {
           completedCars.push({
@@ -998,11 +1061,21 @@ async function fetchData() {
             parkingMinutes: parkingMinutes,
             exitTime: new Date().toISOString(),
             totalDiscountTime: car.totalDiscountTime,
-            discountDetails: car.discountDetails  // ✅ 할인내역도 함께 저장
+            discountDetails: car.discountDetails,
+            oasisDetails: car.oasisDetails,
+            otherDetails: car.otherDetails,
+            hasOasis: car.hasOasis,
+            hasOther: car.hasOther
           });
           hasChanges = true;
         }
       }
+      
+      // 표시용 할인내역명 (oasis_g + 다른업체 모두 표시)
+      let displayNames = [];
+      if (car.hasOasis) displayNames.push(...car.oasisNames);
+      if (car.hasOther) displayNames.push(...car.otherNames);
+      const uniqueNames = [...new Set(displayNames)];
       
       detailedCars.push({
         ...car,
@@ -1011,22 +1084,25 @@ async function fetchData() {
         statusText: statusText,
         statusClass: statusClass,
         totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
-        discountNames: car.discountNames.length > 0 ? car.discountNames.join(' + ') : '-',
-        discountDetails: car.discountDetails  // ✅ 상세 내역 전달
+        discountNames: uniqueNames.length > 0 ? uniqueNames.join(' + ') : '-',
+        discountDetails: car.discountDetails,
+        oasisDetails: car.oasisDetails,
+        otherDetails: car.otherDetails,
+        hasOasis: car.hasOasis,
+        hasOther: car.hasOther
       });
     }
 
-    // ✅ 주차시간 일괄 저장
+    // 주차시간 저장
     if (Object.keys(currentParkingTimes).length > 0) {
       await saveAllParkingTimes(currentParkingTimes);
     }
 
-    // ✅ 출차 기록 저장
     if (hasChanges) {
       await saveCompletedCars(completedCars);
     }
 
-    // ✅ 출차 완료 차량 목록 추가 (현재 목록에 없는 차량)
+    // 출차 완료 차량 추가
     for (const completed of completedCars) {
       if (!carMap.has(completed.carNo) && 
           !detailedCars.some(c => c.carNo === completed.carNo && c.paidStat === '10')) {
@@ -1035,21 +1111,23 @@ async function fetchData() {
           totalDiscountTime: completed.totalDiscountTime || 0,
           regDate: '-',
           entryDate: '-',
-          discountNames: [],
+          discountNames: '-',
           discountDetails: completed.discountDetails || [],
+          oasisDetails: completed.oasisDetails || [],
+          otherDetails: completed.otherDetails || [],
+          hasOasis: completed.hasOasis || false,
+          hasOther: completed.hasOther || false,
           paidStat: '10',
           isNew: false,
           parkingMinutes: completed.parkingMinutes || 0,
           remainTime: 0,
           statusText: '출차완료',
           statusClass: 'status-complete',
-          totalDiscountTimeDisplay: formatTime(completed.totalDiscountTime || 0),
-          discountNames: '-'
+          totalDiscountTimeDisplay: formatTime(completed.totalDiscountTime || 0)
         });
       }
     }
 
-    // ✅ 전체 데이터 저장 (할인내역 모달용)
     allCarsData = detailedCars;
 
     detailedCars.sort((a, b) => {
@@ -1069,7 +1147,7 @@ async function fetchData() {
 }
 
 // ============================================================
-// 📋 할인내역 상세 모달 표시
+// 📋 할인내역 상세 모달
 // ============================================================
 function showDiscountDetails(carNo) {
   const car = allCarsData.find(c => c.carNo === carNo);
@@ -1078,15 +1156,40 @@ function showDiscountDetails(carNo) {
     return;
   }
 
-  document.getElementById('detailModalTitle').textContent = `🚗 ${carNo} 할인내역`;
+  let title = `🚗 ${carNo} 할인내역`;
+  if (car.hasOasis && car.hasOther) {
+    title += ' (oasis_g + 타업체)';
+  } else if (car.hasOasis) {
+    title += ' (oasis_g)';
+  } else if (car.hasOther) {
+    title += ' (타업체)';
+  }
+
+  document.getElementById('detailModalTitle').textContent = title;
   
   let html = '<table>';
-  html += `<tr><th>할인명</th><th>할인값</th><th>등록자</th><th>등록시간</th><th>상태</th></tr>`;
+  html += `<tr><th>구분</th><th>할인명</th><th>할인값</th><th>등록자</th><th>등록시간</th><th>상태</th></tr>`;
   
-  for (const detail of car.discountDetails) {
+  // oasis_g 내역
+  for (const detail of car.oasisDetails) {
     const status = detail.paidStat === '10' ? '출차완료' : '미출차';
     const registrant = detail.registrantName || detail.registrant || '-';
     html += `<tr>
+      <td style="color:#3b82f6;font-weight:600;">oasis_g</td>
+      <td>${detail.discountName || '-'}</td>
+      <td>${detail.discountTime || '-'}</td>
+      <td>${registrant}</td>
+      <td>${fncDatetimeFormat(detail.regDate)}</td>
+      <td>${status}</td>
+    </tr>`;
+  }
+  
+  // 다른업체 내역
+  for (const detail of car.otherDetails) {
+    const status = detail.paidStat === '10' ? '출차완료' : '미출차';
+    const registrant = detail.registrantName || detail.registrant || '-';
+    html += `<tr>
+      <td style="color:#dc2626;font-weight:600;">타업체</td>
       <td>${detail.discountName || '-'}</td>
       <td>${detail.discountTime || '-'}</td>
       <td>${registrant}</td>
@@ -1095,6 +1198,9 @@ function showDiscountDetails(carNo) {
     </tr>`;
   }
   html += '</table>';
+  
+  // 총 합산 시간
+  html += `<div class="detail-total-time">💰 총 할인시간: ${formatTime(car.totalDiscountTime)}</div>`;
   
   document.getElementById('detailModalBody').innerHTML = html;
   document.getElementById('detailModal').classList.add('show');
@@ -1130,18 +1236,37 @@ function renderData(data) {
     const remainDisplay = formatTime(row.remainTime);
     const regDateDisplay = row.regDate ? fncDatetimeFormat(row.regDate) : '-';
     
-    // ✅ 할인내역 표시 (클릭 가능)
-    const hasDetails = row.discountDetails && row.discountDetails.length > 0;
-    const discountDisplay = hasDetails 
-      ? `<span class="discount-detail-btn" onclick="showDiscountDetails('${row.carNo}')">${row.discountNames || '-'} ▼</span>`
-      : (row.discountNames || '-');
+    // 할인내역 표시 (배지 포함)
+    let discountHtml = '';
+    if (row.hasOasis && row.hasOther) {
+      discountHtml = `<span class="discount-detail-btn" onclick="showDiscountDetails('${row.carNo}')">
+        ${row.discountNames} 
+        <span class="badge-oasis">oasis_g</span>
+        <span class="badge-other">타업체</span>
+        ▼
+      </span>`;
+    } else if (row.hasOasis) {
+      discountHtml = `<span class="discount-detail-btn" onclick="showDiscountDetails('${row.carNo}')">
+        ${row.discountNames} 
+        <span class="badge-oasis">oasis_g</span>
+        ▼
+      </span>`;
+    } else if (row.hasOther) {
+      discountHtml = `<span class="discount-detail-btn" onclick="showDiscountDetails('${row.carNo}')">
+        ${row.discountNames} 
+        <span class="badge-other">타업체</span>
+        ▼
+      </span>`;
+    } else {
+      discountHtml = row.discountNames || '-';
+    }
 
     tr.innerHTML = `
       <td>${idx + 1}</td>
       <td><strong>${row.carNo}</strong></td>
       <td>${regDateDisplay}</td>
       <td>${parkingDisplay}</td>
-      <td>${discountDisplay}</td>
+      <td>${discountHtml}</td>
       <td class="${remainClass}">${remainDisplay}</td>
       <td><span class="${row.statusClass}">${row.statusText}</span></td>
     `;
@@ -1169,6 +1294,7 @@ function formatTime(minutes) {
   if (mins > 0) result += mins + '분';
   return result.trim() || '0분';
 }
+
 function fncDatetimeFormat(dateStr) {
   if (!dateStr) return '-';
   const date = dateStr.substring(0, 8);
@@ -1176,6 +1302,7 @@ function fncDatetimeFormat(dateStr) {
   return date.substring(0,4) + '-' + date.substring(4,6) + '-' + date.substring(6,8) + ' ' +
          time.substring(0,2) + ':' + time.substring(2,4) + ':' + time.substring(4,6);
 }
+
 function sha256(message) {
   function rightRotate(value, amount) { return (value >>> amount) | (value << (32 - amount)); }
   const msgBytes = new TextEncoder().encode(message);
@@ -1215,7 +1342,7 @@ function sha256(message) {
 }
 
 // ============================================================
-// ✅ window에 함수 노출 (HTML onclick에서 사용)
+// ✅ window에 함수 노출
 // ============================================================
 window.handleLogin = handleLogin;
 window.handleLogout = handleLogout;
