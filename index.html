@@ -891,7 +891,6 @@ async function fetchData() {
     };
     if (sessionId) headers['Cookie'] = `JSESSIONID=${sessionId}`;
 
-    // ✅ 1. 건물 전체 조회
     const response = await fetch(`${PROXY_BASE}/state/doListMst`, {
       method: 'POST',
       headers: headers,
@@ -899,7 +898,7 @@ async function fetchData() {
       body: new URLSearchParams({
         startDate: dateStr,
         endDate: dateStr,
-        account_no: '',  // 전체
+        account_no: '',
         rowcount: '50000'
       })
     });
@@ -912,7 +911,6 @@ async function fetchData() {
     const result = await response.json();
     const rawData = result.data || [];
     
-    // ✅ 2. 차량별로 그룹화 (전체 데이터)
     const carMap = new Map();
     for (const row of rawData) {
       const carNo = row.carno;
@@ -924,7 +922,6 @@ async function fetchData() {
           totalDiscountTime: 0,
           regDate: row.reg_date || '',
           entryDate: row.entry_date || '',
-          discountNames: [],
           discountDetails: [],
           hasOasis: false,
           paidStat: row.paid_stat || '00',
@@ -950,15 +947,11 @@ async function fetchData() {
         car.hasOasis = true;
       }
       
-      if (row.discount_name && !car.discountNames.includes(row.discount_name)) {
-        car.discountNames.push(row.discount_name);
-      }
       if (row.reg_date) car.regDate = row.reg_date;
       if (row.entry_date) car.entryDate = row.entry_date;
       if (row.paid_stat) car.paidStat = row.paid_stat;
     }
 
-    // ✅ 3. oasis_g가 포함된 차량만 필터링
     const filteredCars = [];
     for (const [carNo, car] of carMap) {
       if (car.hasOasis) {
@@ -966,7 +959,6 @@ async function fetchData() {
       }
     }
 
-    // ✅ 4. 현재 주차 중인 차량 번호 목록
     const currentCarNos = new Set(filteredCars.map(car => car.carNo));
     
     let completedCars = await loadCompletedCars();
@@ -980,7 +972,6 @@ async function fetchData() {
     const now = new Date();
     let hasChanges = false;
     
-    // ✅ 5. 필터링된 차량만 처리
     for (const car of filteredCars) {
       let parkingMinutes = 0;
       let remainTime = 0;
@@ -1028,7 +1019,6 @@ async function fetchData() {
       });
     }
 
-    // 주차시간 저장
     if (Object.keys(currentParkingTimes).length > 0) {
       await saveAllParkingTimes(currentParkingTimes);
     }
@@ -1037,7 +1027,6 @@ async function fetchData() {
       await saveCompletedCars(completedCars);
     }
 
-    // 출차 완료 차량 추가
     for (const completed of completedCars) {
       if (!detailedCars.some(c => c.carNo === completed.carNo && c.paidStat === '10')) {
         const isFiltered = filteredCars.some(c => c.carNo === completed.carNo);
@@ -1047,7 +1036,6 @@ async function fetchData() {
             totalDiscountTime: completed.totalDiscountTime || 0,
             regDate: '-',
             entryDate: '-',
-            discountNames: '-',
             discountDetails: completed.discountDetails || [],
             hasOasis: true,
             paidStat: '10',
@@ -1081,7 +1069,7 @@ async function fetchData() {
 }
 
 // ============================================================
-// 📋 할인내역 상세 모달
+// 📋 할인내역 상세 모달 (구분, 할인값 제거)
 // ============================================================
 function showDiscountDetails(carNo) {
   const car = allCarsData.find(c => c.carNo === carNo);
@@ -1093,18 +1081,13 @@ function showDiscountDetails(carNo) {
   document.getElementById('detailModalTitle').textContent = `🚗 ${carNo} 할인내역`;
   
   let html = '<table>';
-  html += `<tr><th>구분</th><th>할인명</th><th>할인값</th><th>등록자</th><th>등록시간</th><th>상태</th></tr>`;
+  html += `<tr><th>할인명</th><th>등록자</th><th>등록시간</th><th>상태</th></tr>`;
   
   for (const detail of car.discountDetails) {
     const status = detail.paidStat === '10' ? '출차완료' : '미출차';
     const registrant = detail.registrantName || detail.registrant || '-';
-    const isOasis = detail.registrant === 'oasis_g';
-    const color = isOasis ? '#3b82f6' : '#dc2626';
-    const label = isOasis ? 'oasis_g' : '타업체';
     html += `<tr>
-      <td style="color:${color};font-weight:600;">${label}</td>
       <td>${detail.discountName || '-'}</td>
-      <td>${detail.discountTime || '-'}</td>
       <td>${registrant}</td>
       <td>${fncDatetimeFormat(detail.regDate)}</td>
       <td>${status}</td>
@@ -1148,7 +1131,6 @@ function renderData(data) {
     const remainDisplay = formatTime(row.remainTime);
     const regDateDisplay = row.regDate ? fncDatetimeFormat(row.regDate) : '-';
     
-    // ✅ 할인내역: 합산된 총 시간만 표시 (클릭하면 상세보기)
     const hasDetails = row.discountDetails && row.discountDetails.length > 0;
     const totalTimeDisplay = row.totalDiscountTime > 0 ? formatTime(row.totalDiscountTime) : '0분';
     const discountDisplay = hasDetails 
