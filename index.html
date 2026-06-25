@@ -768,36 +768,36 @@ async function saveCompletedCars(data) {
 }
 
 // ============================================================
-// ✅ 개별 차량 주차시간 저장 (출차 시 사용)
+// ✅ 모든 차량 주차시간 저장 (프록시 API 통해)
 // ============================================================
-async function saveParkingTime(carNo, minutes) {
+async function saveAllParkingTimes(data) {
   try {
-    await fetch(`${PROXY_BASE}/kv/parking`, {
+    await fetch(`${PROXY_BASE}/kv/parking/all`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ carNo, minutes })
+      body: JSON.stringify({ data })
     });
   } catch (e) {
-    console.warn('⚠️ 주차시간 저장 실패:', e);
+    console.warn('⚠️ 주차시간 일괄 저장 실패:', e);
   }
 }
 
 // ============================================================
-// ✅ 개별 차량 주차시간 불러오기
+// ✅ 모든 차량 주차시간 불러오기 (프록시 API 통해)
 // ============================================================
-async function loadParkingTime(carNo) {
+async function loadAllParkingTimes() {
   try {
-    const response = await fetch(`${PROXY_BASE}/kv/parking?carNo=${carNo}`);
+    const response = await fetch(`${PROXY_BASE}/kv/parking/all`);
     const result = await response.json();
-    return result.minutes || 0;
+    return result.data || {};
   } catch (e) {
-    console.warn('⚠️ 주차시간 로드 실패:', e);
-    return 0;
+    console.warn('⚠️ 주차시간 일괄 로드 실패:', e);
+    return {};
   }
 }
 
 // ============================================================
-// 📊 데이터 가져오기 (출차 기록 저장 포함)
+// 📊 데이터 가져오기
 // ============================================================
 async function fetchData() {
   try {
@@ -835,12 +835,13 @@ async function fetchData() {
     // ✅ 현재 주차 중인 차량 번호 목록
     const currentCarNos = new Set(rawData.map(row => row.carno).filter(Boolean));
     
-    // ✅ 이전에 저장된 출차 완료 차량 불러오기 (프록시 API 통해)
+    // ✅ 이전에 저장된 출차 완료 차량 불러오기
     let completedCars = await loadCompletedCars();
-    
-    // ✅ 현재 주차 목록에 없는 차량 = 출차됨 (completedCars 유지)
     const validCompleted = completedCars.filter(car => !currentCarNos.has(car.carNo));
     completedCars = validCompleted;
+
+    // ✅ 저장된 모든 주차시간 불러오기 (한 번에)
+    const savedParkingTimes = await loadAllParkingTimes();
 
     const carMap = new Map();
     for (const row of rawData) {
@@ -854,8 +855,7 @@ async function fetchData() {
           entryDate: row.entry_date || '',
           discountNames: [],
           paidStat: row.paid_stat || '00',
-          isNew: false,
-          currentParkingMinutes: 0  // ✅ 현재 주차시간 저장용
+          isNew: false
         });
       }
       const car = carMap.get(carNo);
@@ -871,8 +871,11 @@ async function fetchData() {
       if (row.paid_stat) car.paidStat = row.paid_stat;
     }
 
+    // ✅ 현재 주차시간을 저장할 객체
+    const currentParkingTimes = {};
     const detailedCars = [];
     const now = new Date();
+    let hasChanges = false;
     
     for (const [carNo, car] of carMap) {
       let parkingMinutes = 0;
@@ -880,15 +883,12 @@ async function fetchData() {
       let statusText = '미출차';
       let statusClass = 'status-pending';
       
-      // ✅ 미출차: 주차시간 실시간 계산 및 저장
       if (car.paidStat !== '10') {
+        // ✅ 미출차: 주차시간 실시간 계산
         if (car.entryDate) {
           const entry = parseDate(car.entryDate);
           parkingMinutes = Math.floor((now - entry) / 60000);
-          car.currentParkingMinutes = parkingMinutes;
-          
-          // ✅ KV에 현재 주차시간 저장 (출차 시 사용)
-          await saveParkingTime(carNo, parkingMinutes);
+          currentParkingTimes[carNo] = parkingMinutes;
         }
         remainTime = Math.max(0, car.totalDiscountTime - parkingMinutes);
         if (remainTime <= 0) {
@@ -896,9 +896,8 @@ async function fetchData() {
           statusClass = 'status-overdue';
         }
       } else {
-        // ✅ 출차완료: 저장된 마지막 주차시간 사용
-        const savedMinutes = await loadParkingTime(carNo);
-        parkingMinutes = savedMinutes || 0;
+        // ✅ 출차완료: 저장된 주차시간 사용
+        parkingMinutes = savedParkingTimes[carNo] || 0;
         remainTime = 0;
         statusText = '출차완료';
         statusClass = 'status-complete';
@@ -912,7 +911,7 @@ async function fetchData() {
             exitTime: new Date().toISOString(),
             totalDiscountTime: car.totalDiscountTime
           });
-          await saveCompletedCars(completedCars);
+          hasChanges = true;
         }
       }
       
@@ -925,6 +924,16 @@ async function fetchData() {
         totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
         discountNames: car.discountNames.length > 0 ? car.discountNames.join(' + ') : '-'
       });
+    }
+
+    // ✅ 주차시간 일괄 저장 (차량 수만큼 API 호출하지 않음)
+    if (Object.keys(currentParkingTimes).length > 0) {
+      await saveAllParkingTimes(currentParkingTimes);
+    }
+
+    // ✅ 출차 기록 저장
+    if (hasChanges) {
+      await saveCompletedCars(completedCars);
     }
 
     // ✅ 출차 완료 차량 목록 추가 (현재 목록에 없는 차량)
@@ -949,7 +958,6 @@ async function fetchData() {
       }
     }
 
-    // ✅ 출차완료는 목록 하단에 표시
     detailedCars.sort((a, b) => {
       if (a.paidStat === '10' && b.paidStat !== '10') return 1;
       if (a.paidStat !== '10' && b.paidStat === '10') return -1;
