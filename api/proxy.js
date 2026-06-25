@@ -69,8 +69,8 @@ export default async function handler(req, res) {
   // ✅ GET 요청: 프록시 상태 확인
   // ============================================================
   if (req.method === 'GET') {
-    return res.status(200).json({ 
-      status: 'ok', 
+    return res.status(200).json({
+      status: 'ok',
       message: 'Proxy is running',
       timestamp: new Date().toISOString()
     });
@@ -84,7 +84,7 @@ export default async function handler(req, res) {
       // /api/proxy 제거하고 실제 API 경로로 변환
       let apiPath = req.url || '';
       apiPath = apiPath.replace(/^\/api\/proxy/, '');
-      
+
       const targetUrl = `https://a17574.parkingweb.kr${apiPath}`;
       console.log('🔄 프록시 요청:', targetUrl);
       console.log('📦 요청 본문:', req.body);
@@ -111,23 +111,27 @@ export default async function handler(req, res) {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         },
         body: body,
+        redirect: 'manual',
       });
 
       // 응답 처리
       const responseData = await response.text();
-      
-      // 쿠키 전달
+
+      // ✅ 쿠키 헤더 전달 (여러 개 처리)
       const setCookie = response.headers.get('set-cookie');
       if (setCookie) {
-        res.setHeader('Set-Cookie', setCookie);
+        const cookies = setCookie.split(',').map(c => c.trim());
+        cookies.forEach(cookie => {
+          res.appendHeader('Set-Cookie', cookie);
+        });
       }
 
       res.status(response.status).send(responseData);
-      
+
     } catch (error) {
       console.error('❌ 프록시 오류:', error);
-      res.status(500).json({ 
-        error: 'Proxy Error', 
+      res.status(500).json({
+        error: 'Proxy Error',
         message: error.message,
         timestamp: new Date().toISOString()
       });
