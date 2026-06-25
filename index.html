@@ -222,11 +222,12 @@
       padding: 0 4px;
       -webkit-overflow-scrolling: touch;
     }
+    /* ✅ 테이블 스타일 - 좌우 스와이프 없이 보이도록 */
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
-      min-width: 700px;
+      font-size: 12px;
+      min-width: auto;
     }
     thead {
       background: #f8fafc;
@@ -234,23 +235,48 @@
     }
     th {
       text-align: left;
-      padding: 10px 12px;
+      padding: 8px 10px;
       font-weight: 600;
       color: #475569;
       white-space: nowrap;
     }
     td {
-      padding: 10px 12px;
+      padding: 8px 10px;
       border-bottom: 1px solid #f1f5f9;
       color: #1a1a2e;
     }
     tbody tr:hover { background: #f8fafc; }
+
+    /* ✅ 컬럼 너비 조정 */
+    th:first-child, td:first-child { min-width: 35px; max-width: 40px; text-align: center; }
+    th:nth-child(2), td:nth-child(2) { min-width: 70px; max-width: 90px; }
+    th:nth-child(3), td:nth-child(3) { min-width: 100px; max-width: 130px; }
+    th:nth-child(4), td:nth-child(4) { min-width: 55px; max-width: 75px; }
+    th:nth-child(5), td:nth-child(5) { min-width: 55px; max-width: 100px; }
+    th:nth-child(6), td:nth-child(6) { min-width: 55px; max-width: 75px; }
+    th:last-child, td:last-child { min-width: 55px; max-width: 65px; text-align: center; }
+
     .discount-detail-btn {
       color: #3b82f6;
       cursor: pointer;
       text-decoration: underline;
+      font-size: 11px;
     }
     .discount-detail-btn:hover { color: #2563eb; }
+
+    /* ✅ 모바일 대응 */
+    @media (max-width: 768px) {
+      table { font-size: 10px; }
+      th, td { padding: 4px 6px; }
+      th:nth-child(3), td:nth-child(3) { min-width: 80px; max-width: 100px; }
+    }
+
+    @media (max-width: 480px) {
+      table { font-size: 9px; }
+      th, td { padding: 3px 4px; }
+      th:nth-child(3), td:nth-child(3) { min-width: 60px; max-width: 80px; }
+      .discount-detail-btn { font-size: 9px; }
+    }
 
     .auto-refresh-badge {
       display: inline-block;
@@ -1069,7 +1095,7 @@ async function fetchData() {
 }
 
 // ============================================================
-// 📋 할인내역 상세 모달 (구분, 할인값 제거)
+// 📋 할인내역 상세 모달
 // ============================================================
 function showDiscountDetails(carNo) {
   const car = allCarsData.find(c => c.carNo === carNo);
