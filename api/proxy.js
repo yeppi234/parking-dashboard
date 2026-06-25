@@ -1,38 +1,81 @@
 export default async function handler(req, res) {
-  // CORS 헤더 설정 (모든 응답에 포함)
+  // ✅ CORS 헤더 설정 (모든 응답에 포함)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Cookie, X-Requested-With');
 
-  // OPTIONS 요청 처리 (프리플라이트)
+  // ✅ OPTIONS 요청 처리 (프리플라이트)
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // GET 요청 처리 (상태 확인용)
+  // ✅ GET 요청 처리 (상태 확인용)
   if (req.method === 'GET') {
-    return res.status(200).json({ status: 'ok', message: 'Proxy is running' });
+    return res.status(200).json({ 
+      status: 'ok', 
+      message: 'Proxy is running',
+      timestamp: new Date().toISOString()
+    });
   }
 
-  // POST 요청만 프록시 처리
+  // ✅ POST 요청만 프록시 처리
   if (req.method === 'POST') {
     try {
-      const targetUrl = `https://a17574.parkingweb.kr${req.url}`;
+      // 🔥 1. 실제 API 경로로 변환 (req.url에서 /api/proxy 제거)
+      let apiPath = req.url || '';
+      // /api/proxy/login → /login
+      // /api/proxy/state/doListMst → /state/doListMst
+      apiPath = apiPath.replace(/^\/api\/proxy/, '');
+      
+      const targetUrl = `https://a17574.parkingweb.kr${apiPath}`;
+      console.log('🔄 프록시 요청:', targetUrl);
+
+      // 🔥 2. 요청 본문 처리 (Vercel에서 제공하는 방식)
+      let body = req.body;
+      
+      // req.body가 없거나 객체가 아닌 경우 처리
+      if (!body) {
+        // req를 스트림으로 읽어야 하지만, Next.js API Routes에서는 req.body가 자동 파싱됨
+        body = '';
+      } else if (typeof body === 'object' && !(body instanceof Buffer)) {
+        // 객체를 URLSearchParams로 변환 (form-data)
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(body)) {
+          params.append(key, value);
+        }
+        body = params.toString();
+      }
+
+      // 🔥 3. 실제 API 호출
       const response = await fetch(targetUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': req.headers['content-type'] || 'application/x-www-form-urlencoded',
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
           'Cookie': req.headers.cookie || '',
           'X-Requested-With': 'XMLHttpRequest',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         },
-        body: req.body, // 이미 파싱된 body 사용 (Vercel에서 자동 파싱)
+        body: body,
       });
 
-      const data = await response.text();
-      res.status(response.status).send(data);
+      // 🔥 4. 응답 처리
+      const responseData = await response.text();
+      
+      // ✅ 응답 헤더에 쿠키가 있으면 클라이언트로 전달
+      const setCookie = response.headers.get('set-cookie');
+      if (setCookie) {
+        res.setHeader('Set-Cookie', setCookie);
+      }
+
+      res.status(response.status).send(responseData);
+      
     } catch (error) {
-      console.error('Proxy error:', error);
-      res.status(500).json({ error: 'Internal Server Error' });
+      console.error('❌ 프록시 오류:', error);
+      res.status(500).json({ 
+        error: 'Proxy Error', 
+        message: error.message,
+        timestamp: new Date().toISOString()
+      });
     }
     return;
   }
