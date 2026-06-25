@@ -622,8 +622,7 @@ async function handleLogin() {
       
       fetchData();
       setInterval(async () => {
-          refreshBalance();
-        }
+        await refreshBalance();
         fetchData();
       }, 5000);
     } else {
