@@ -410,7 +410,12 @@
   </div>
 </div>
 
-<script>
+<script type="module">
+// ============================================================
+// ✅ Vercel KV (Redis) import
+// ============================================================
+import { kv } from '@vercel/kv';
+
 // ============================================================
 // ✅ Vercel 프록시 주소
 // ============================================================
@@ -739,7 +744,7 @@ function parseDate(dateStr) {
 }
 
 // ============================================================
-// 📊 데이터 가져오기 (getForDiscount 호출 없이 entryDate로 계산)
+// 📊 데이터 가져오기 (출차 기록 저장 포함)
 // ============================================================
 async function fetchData() {
   try {
@@ -774,14 +779,22 @@ async function fetchData() {
     const result = await response.json();
     const rawData = result.data || [];
     
+    // ✅ 현재 주차 중인 차량 번호 목록
     const currentCarNos = new Set(rawData.map(row => row.carno).filter(Boolean));
-    const newCarNos = [];
-    for (const carNo of currentCarNos) {
-      if (!prevCarNos.has(carNo)) {
-        newCarNos.push(carNo);
-      }
+    
+    // ✅ 이전에 저장된 출차 완료 차량 불러오기
+    let completedCars = [];
+    try {
+      const saved = await kv.get('completedCars');
+      completedCars = saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.warn('⚠️ Redis 조회 실패:', e);
+      completedCars = [];
     }
-    prevCarNos = currentCarNos;
+    
+    // ✅ 현재 주차 목록에 없는 차량 = 출차됨 (completedCars 유지)
+    const validCompleted = completedCars.filter(car => !currentCarNos.has(car.carNo));
+    completedCars = validCompleted;
 
     const carMap = new Map();
     for (const row of rawData) {
@@ -795,7 +808,7 @@ async function fetchData() {
           entryDate: row.entry_date || '',
           discountNames: [],
           paidStat: row.paid_stat || '00',
-          isNew: newCarNos.includes(carNo)
+          isNew: false
         });
       }
       const car = carMap.get(carNo);
@@ -815,24 +828,39 @@ async function fetchData() {
     const now = new Date();
     
     for (const [carNo, car] of carMap) {
-      // ✅ entryDate로 주차시간 계산 (getForDiscount 호출 없이)
       let parkingMinutes = 0;
-      if (car.entryDate) {
-        const entry = parseDate(car.entryDate);
-        parkingMinutes = Math.floor((now - entry) / 60000);
-      }
-      
-      // 출차여부 판단
+      let remainTime = 0;
       let statusText = '미출차';
       let statusClass = 'status-pending';
+      
+      // ✅ 출차여부 판단 (paidStat === '10' 이면 출차완료)
       if (car.paidStat === '10') {
+        parkingMinutes = 0;
+        remainTime = 0;
         statusText = '출차완료';
         statusClass = 'status-complete';
-      }
-      
-      // 출차여유시간 = 할인등록시간 - 주차시간 (출차완료는 0)
-      let remainTime = 0;
-      if (car.paidStat !== '10') {
+        
+        // ✅ 출차 기록 저장 (24시간 유지)
+        const exists = completedCars.some(c => c.carNo === carNo);
+        if (!exists) {
+          completedCars.push({
+            carNo: car.carNo,
+            parkingMinutes: 0,
+            exitTime: new Date().toISOString(),
+            totalDiscountTime: car.totalDiscountTime
+          });
+          try {
+            await kv.set('completedCars', JSON.stringify(completedCars), { ex: 86400 });
+          } catch (e) {
+            console.warn('⚠️ Redis 저장 실패:', e);
+          }
+        }
+      } else {
+        // ✅ 미출차: 주차시간 실시간 계산
+        if (car.entryDate) {
+          const entry = parseDate(car.entryDate);
+          parkingMinutes = Math.floor((now - entry) / 60000);
+        }
         remainTime = Math.max(0, car.totalDiscountTime - parkingMinutes);
         if (remainTime <= 0) {
           statusText = '미출차 (초과)';
@@ -851,6 +879,29 @@ async function fetchData() {
       });
     }
 
+    // ✅ 출차 완료 차량 목록 추가 (현재 목록에 없는 차량)
+    for (const completed of completedCars) {
+      if (!carMap.has(completed.carNo) && 
+          !detailedCars.some(c => c.carNo === completed.carNo && c.paidStat === '10')) {
+        detailedCars.push({
+          carNo: completed.carNo,
+          totalDiscountTime: completed.totalDiscountTime || 0,
+          regDate: '-',
+          entryDate: '-',
+          discountNames: [],
+          paidStat: '10',
+          isNew: false,
+          parkingMinutes: 0,
+          remainTime: 0,
+          statusText: '출차완료',
+          statusClass: 'status-complete',
+          totalDiscountTimeDisplay: formatTime(completed.totalDiscountTime || 0),
+          discountNames: '-'
+        });
+      }
+    }
+
+    // ✅ 출차완료는 목록 하단에 표시
     detailedCars.sort((a, b) => {
       if (a.paidStat === '10' && b.paidStat !== '10') return 1;
       if (a.paidStat !== '10' && b.paidStat === '10') return -1;
@@ -971,6 +1022,19 @@ function sha256(message) {
   function toHex(num){return ('00000000'+(num>>>0).toString(16)).slice(-8);}
   return toHex(h0)+toHex(h1)+toHex(h2)+toHex(h3)+toHex(h4)+toHex(h5)+toHex(h6)+toHex(h7);
 }
+
+// ============================================================
+// ✅ window에 함수 노출 (HTML onclick에서 사용)
+// ============================================================
+window.handleLogin = handleLogin;
+window.handleLogout = handleLogout;
+window.openThresholdModal = openThresholdModal;
+window.closeThresholdModal = closeThresholdModal;
+window.saveThreshold = saveThreshold;
+window.closeToast = closeToast;
+window.fncPopupAccount = fncPopupAccount;
+window.fncPopupAcPlate = fncPopupAcPlate;
+window.fncPrint = fncPrint;
 </script>
 
 </body>
