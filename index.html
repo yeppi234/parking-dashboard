@@ -739,7 +739,7 @@ function parseDate(dateStr) {
 }
 
 // ============================================================
-// 📊 데이터 가져오기
+// 📊 데이터 가져오기 (getForDiscount 호출 없이 entryDate로 계산)
 // ============================================================
 async function fetchData() {
   try {
@@ -795,8 +795,6 @@ async function fetchData() {
           entryDate: row.entry_date || '',
           discountNames: [],
           paidStat: row.paid_stat || '00',
-          entryId: row.id || '',
-          originalDcTime: row.dc_time || '',
           isNew: newCarNos.includes(carNo)
         });
       }
@@ -810,86 +808,47 @@ async function fetchData() {
       }
       if (row.reg_date) car.regDate = row.reg_date;
       if (row.entry_date) car.entryDate = row.entry_date;
-      if (row.id) car.entryId = row.id;
       if (row.paid_stat) car.paidStat = row.paid_stat;
     }
 
     const detailedCars = [];
+    const now = new Date();
+    
     for (const [carNo, car] of carMap) {
-      // ✅ 출차완료 차량은 getForDiscount 호출하지 않음 (500 오류 방지)
-      if (car.paidStat === '10') {
-        detailedCars.push({
-          ...car,
-          parkingMinutes: 0,
-          remainTime: car.totalDiscountTime,
-          statusText: '출차완료',
-          statusClass: 'status-complete',
-          totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
-          discountNames: car.discountNames.length > 0 ? car.discountNames.join(' + ') : '-'
-        });
-        continue;
+      // ✅ entryDate로 주차시간 계산 (getForDiscount 호출 없이)
+      let parkingMinutes = 0;
+      if (car.entryDate) {
+        const entry = parseDate(car.entryDate);
+        parkingMinutes = Math.floor((now - entry) / 60000);
       }
       
-      // ✅ 미출차 차량만 getForDiscount 호출
-      try {
-        const detailResponse = await fetch(`${PROXY_BASE}/discount/registration/getForDiscount`, {
-          method: 'POST',
-          headers: headers,
-          credentials: 'include',
-          body: new URLSearchParams({ id: car.entryId, member_id: 'oasis_g' })
-        });
-        
-        if (!detailResponse.ok) {
-          console.warn(`⚠️ getForDiscount 실패 (${detailResponse.status}):`, car.entryId);
-          detailedCars.push({
-            ...car,
-            parkingMinutes: 0,
-            remainTime: car.totalDiscountTime,
-            statusText: '미출차',
-            statusClass: 'status-pending',
-            totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
-            discountNames: car.discountNames.length > 0 ? car.discountNames.join(' + ') : '-'
-          });
-          continue;
-        }
-        
-        const detail = await detailResponse.json();
-        const parkEntry = detail.parkEntry || {};
-        const entryDate = parkEntry.dtInDate || car.entryDate;
-        let parkingMinutes = 0;
-        if (entryDate) {
-          const entry = parseDate(entryDate);
-          const now = new Date();
-          parkingMinutes = Math.floor((now - entry) / 60000);
-        }
-        const remainTime = Math.max(0, car.totalDiscountTime - parkingMinutes);
-        let statusText = '미출차';
-        let statusClass = 'status-pending';
+      // 출차여부 판단
+      let statusText = '미출차';
+      let statusClass = 'status-pending';
+      if (car.paidStat === '10') {
+        statusText = '출차완료';
+        statusClass = 'status-complete';
+      }
+      
+      // 출차여유시간 = 할인등록시간 - 주차시간 (출차완료는 0)
+      let remainTime = 0;
+      if (car.paidStat !== '10') {
+        remainTime = Math.max(0, car.totalDiscountTime - parkingMinutes);
         if (remainTime <= 0) {
           statusText = '미출차 (초과)';
           statusClass = 'status-overdue';
         }
-        detailedCars.push({
-          ...car,
-          parkingMinutes,
-          remainTime,
-          statusText,
-          statusClass,
-          totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
-          discountNames: car.discountNames.length > 0 ? car.discountNames.join(' + ') : '-'
-        });
-      } catch (e) {
-        console.warn('⚠️ getForDiscount 예외:', e.message);
-        detailedCars.push({
-          ...car,
-          parkingMinutes: 0,
-          remainTime: car.totalDiscountTime,
-          statusText: '미출차',
-          statusClass: 'status-pending',
-          totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
-          discountNames: car.discountNames.length > 0 ? car.discountNames.join(' + ') : '-'
-        });
       }
+      
+      detailedCars.push({
+        ...car,
+        parkingMinutes: parkingMinutes,
+        remainTime: remainTime,
+        statusText: statusText,
+        statusClass: statusClass,
+        totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
+        discountNames: car.discountNames.length > 0 ? car.discountNames.join(' + ') : '-'
+      });
     }
 
     detailedCars.sort((a, b) => {
