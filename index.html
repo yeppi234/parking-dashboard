@@ -222,7 +222,6 @@
       padding: 0 4px;
       -webkit-overflow-scrolling: touch;
     }
-    /* ✅ 테이블 스타일 - 좌우 스와이프 없이 보이도록 */
     table {
       width: 100%;
       border-collapse: collapse;
@@ -247,7 +246,6 @@
     }
     tbody tr:hover { background: #f8fafc; }
 
-    /* ✅ 컬럼 너비 조정 */
     th:first-child, td:first-child { min-width: 35px; max-width: 40px; text-align: center; }
     th:nth-child(2), td:nth-child(2) { min-width: 70px; max-width: 90px; }
     th:nth-child(3), td:nth-child(3) { min-width: 100px; max-width: 130px; }
@@ -264,7 +262,6 @@
     }
     .discount-detail-btn:hover { color: #2563eb; }
 
-    /* ✅ 모바일 대응 */
     @media (max-width: 768px) {
       table { font-size: 10px; }
       th, td { padding: 4px 6px; }
@@ -574,7 +571,7 @@ function saveThreshold() {
 }
 
 // ============================================================
-// 🔐 로그인
+// 🔐 로그인 (로그인 응답 HTML에서 잔액 추출)
 // ============================================================
 async function handleLogin() {
   const id = document.getElementById('loginId').value;
@@ -607,18 +604,27 @@ async function handleLogin() {
       if (match) sessionId = match[1];
     }
 
+    // ✅ 응답 HTML에서 바로 잔액 추출
+    const html = await response.text();
+    const balance = extractBalanceFromHTML(html);
+
     if (response.ok || response.status === 302) {
+      if (balance > 0) {
+        currentBalance = balance;
+        localStorage.setItem(BALANCE_KEY, balance.toString());
+        updateBalanceDisplay(balance);
+      }
+
       document.getElementById('loadingOverlay').classList.remove('show');
       loginBtn.disabled = false;
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('mainContent').style.display = 'block';
       
-      setTimeout(fetchBalance, 1000);
       fetchData();
       setInterval(async () => {
         balanceCheckCount++;
         if (balanceCheckCount % 6 === 0) {
-          fetchBalance();
+          refreshBalance();
         }
         fetchData();
       }, 5000);
@@ -637,6 +643,69 @@ async function handleLogin() {
   }
 }
 
+// ✅ HTML에서 잔액 추출 함수
+function extractBalanceFromHTML(html) {
+  try {
+    // 1. lblRemainTimeCharge ID 찾기
+    const match1 = html.match(/id="lblRemainTimeCharge"[^>]*>([^<]+)<\/label>/);
+    if (match1) {
+      const val = parseInt(match1[1].replace(/,/g, '').trim());
+      if (val > 0) return val;
+    }
+    
+    // 2. extraCharge ID 찾기
+    const match2 = html.match(/id="extraCharge"[^>]*>([^<]+)<\/label>/);
+    if (match2) {
+      const val = parseInt(match2[1].replace(/,/g, '').trim());
+      if (val > 0) return val;
+    }
+    
+    // 3. hidden input 찾기
+    const match3 = html.match(/id="[^"]*(?:remain|charge)[^"]*"[^>]*value="([^"]+)"/i);
+    if (match3) {
+      const val = parseInt(match3[1].replace(/,/g, '').trim());
+      if (val > 0) return val;
+    }
+    
+    // 4. 저장된 값 사용
+    const saved = localStorage.getItem(BALANCE_KEY);
+    if (saved !== null) {
+      return parseInt(saved);
+    }
+    
+    return 0;
+  } catch (e) {
+    console.warn('⚠️ 잔액 추출 실패:', e);
+    const saved = localStorage.getItem(BALANCE_KEY);
+    if (saved !== null) {
+      return parseInt(saved);
+    }
+    return 0;
+  }
+}
+
+// ✅ 주기적 잔액 갱신
+async function refreshBalance() {
+  try {
+    const response = await fetch(`${PROXY_BASE}/discount/registration`, {
+      headers: {
+        'Cookie': document.cookie
+      }
+    });
+    const html = await response.text();
+    const balance = extractBalanceFromHTML(html);
+    
+    if (balance > 0) {
+      currentBalance = balance;
+      localStorage.setItem(BALANCE_KEY, balance.toString());
+      updateBalanceDisplay(balance);
+      console.log('💰 잔액 갱신:', balance);
+    }
+  } catch (e) {
+    console.warn('⚠️ 잔액 갱신 실패:', e);
+  }
+}
+
 function handleLogout() {
   document.getElementById('loginOverlay').style.display = 'flex';
   document.getElementById('mainContent').style.display = 'none';
@@ -644,135 +713,6 @@ function handleLogout() {
   sessionId = '';
   currentBalance = 0;
   prevCarNos = new Set();
-}
-
-// ============================================================
-// 💰 계정 잔여 금액 조회
-// ============================================================
-function fetchBalance() {
-  return new Promise((resolve) => {
-    try {
-      const iframe = document.createElement('iframe');
-      iframe.src = `${PROXY_BASE}/discount/registration`;
-      iframe.style.cssText = 'position:absolute;width:0;height:0;border:0;visibility:hidden;';
-      document.body.appendChild(iframe);
-
-      let resolved = false;
-      const timeoutId = setTimeout(() => {
-        if (!resolved) {
-          resolved = true;
-          iframe.remove();
-          const saved = localStorage.getItem(BALANCE_KEY);
-          if (saved !== null) {
-            currentBalance = parseInt(saved);
-            updateBalanceDisplay(currentBalance);
-          }
-          resolve(currentBalance);
-        }
-      }, 5000);
-
-      iframe.onload = function() {
-        if (resolved) return;
-        resolved = true;
-        clearTimeout(timeoutId);
-        
-        try {
-          const doc = iframe.contentDocument || iframe.contentWindow.document;
-          let balance = 0;
-          let el = null;
-
-          el = doc.getElementById('lblRemainTimeCharge');
-          
-          if (!el || !el.textContent) {
-            el = doc.getElementById('extraCharge');
-          }
-          
-          if (!el || !el.value) {
-            const allInputs = doc.querySelectorAll('input[type="hidden"]');
-            for (const input of allInputs) {
-              if (input.id && (input.id.includes('remain') || input.id.includes('charge'))) {
-                el = input;
-                break;
-              }
-            }
-          }
-          
-          if (el) {
-            const raw = el.value || el.textContent || '';
-            const val = parseInt(raw.replace(/,/g, '').trim()) || 0;
-            balance = val;
-          }
-          
-          if (balance > 0) {
-            currentBalance = balance;
-            updateBalanceDisplay(balance);
-            localStorage.setItem(BALANCE_KEY, balance.toString());
-            
-            if (balance < THRESHOLD_AMOUNT) {
-              const now = Date.now();
-              const lastShown = lastToastShown['account'] || 0;
-              if (now - lastShown > 5 * 60 * 1000) {
-                lastToastShown['account'] = now;
-                showToast(
-                  '⚠️ 계정 잔액 부족',
-                  `현재 잔여 금액이 ${balance.toLocaleString()}원 입니다. 충전이 필요합니다. (임계값: ${THRESHOLD_AMOUNT.toLocaleString()}원)`,
-                  'danger'
-                );
-              }
-            }
-            resolve(balance);
-          } else {
-            const saved = localStorage.getItem(BALANCE_KEY);
-            if (saved !== null) {
-              currentBalance = parseInt(saved);
-              updateBalanceDisplay(currentBalance);
-              resolve(currentBalance);
-            } else {
-              resolve(0);
-            }
-          }
-        } catch (e) {
-          console.error('iframe 잔액 추출 오류:', e);
-          const saved = localStorage.getItem(BALANCE_KEY);
-          if (saved !== null) {
-            currentBalance = parseInt(saved);
-            updateBalanceDisplay(currentBalance);
-            resolve(currentBalance);
-          } else {
-            resolve(0);
-          }
-        } finally {
-          iframe.remove();
-        }
-      };
-
-      iframe.onerror = function() {
-        if (!resolved) {
-          resolved = true;
-          clearTimeout(timeoutId);
-          iframe.remove();
-          const saved = localStorage.getItem(BALANCE_KEY);
-          if (saved !== null) {
-            currentBalance = parseInt(saved);
-            updateBalanceDisplay(currentBalance);
-            resolve(currentBalance);
-          } else {
-            resolve(0);
-          }
-        }
-      };
-    } catch (e) {
-      console.error('fetchBalance 오류:', e);
-      const saved = localStorage.getItem(BALANCE_KEY);
-      if (saved !== null) {
-        currentBalance = parseInt(saved);
-        updateBalanceDisplay(currentBalance);
-        resolve(currentBalance);
-      } else {
-        resolve(0);
-      }
-    }
-  });
 }
 
 function updateBalanceDisplay(balance) {
