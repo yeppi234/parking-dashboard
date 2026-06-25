@@ -1,15 +1,15 @@
 export default async function handler(req, res) {
-  // ✅ CORS 헤더 설정 (모든 응답에 포함)
+  // CORS 헤더 설정
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Cookie, X-Requested-With');
 
-  // ✅ OPTIONS 요청 처리 (프리플라이트)
+  // OPTIONS 요청 처리 (프리플라이트)
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // ✅ GET 요청 처리 (상태 확인용)
+  // GET 요청 처리 (상태 확인용)
   if (req.method === 'GET') {
     return res.status(200).json({ 
       status: 'ok', 
@@ -18,24 +18,25 @@ export default async function handler(req, res) {
     });
   }
 
-  // ✅ POST 요청만 프록시 처리
+  // POST 요청만 프록시 처리
   if (req.method === 'POST') {
     try {
-      // 🔥 1. 실제 API 경로로 변환 (req.url에서 /api/proxy 제거)
+      // 🔥 중요: /api/proxy 제거하고 실제 API 경로로 변환
       let apiPath = req.url || '';
       // /api/proxy/login → /login
       // /api/proxy/state/doListMst → /state/doListMst
+      // /api/proxy/discount/registration/getForDiscount → /discount/registration/getForDiscount
       apiPath = apiPath.replace(/^\/api\/proxy/, '');
       
       const targetUrl = `https://a17574.parkingweb.kr${apiPath}`;
       console.log('🔄 프록시 요청:', targetUrl);
+      console.log('📦 요청 본문:', req.body);
 
-      // 🔥 2. 요청 본문 처리 (Vercel에서 제공하는 방식)
+      // 🔥 요청 본문 처리 (Vercel 서버리스 함수에서 body 읽기)
       let body = req.body;
       
-      // req.body가 없거나 객체가 아닌 경우 처리
+      // body가 없거나 객체가 아닌 경우 처리
       if (!body) {
-        // req를 스트림으로 읽어야 하지만, Next.js API Routes에서는 req.body가 자동 파싱됨
         body = '';
       } else if (typeof body === 'object' && !(body instanceof Buffer)) {
         // 객체를 URLSearchParams로 변환 (form-data)
@@ -46,7 +47,7 @@ export default async function handler(req, res) {
         body = params.toString();
       }
 
-      // 🔥 3. 실제 API 호출
+      // 🔥 실제 API 호출
       const response = await fetch(targetUrl, {
         method: 'POST',
         headers: {
@@ -58,10 +59,10 @@ export default async function handler(req, res) {
         body: body,
       });
 
-      // 🔥 4. 응답 처리
+      // 🔥 응답 처리
       const responseData = await response.text();
       
-      // ✅ 응답 헤더에 쿠키가 있으면 클라이언트로 전달
+      // 쿠키 전달
       const setCookie = response.headers.get('set-cookie');
       if (setCookie) {
         res.setHeader('Set-Cookie', setCookie);
