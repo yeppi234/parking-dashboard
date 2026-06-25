@@ -622,8 +622,6 @@ async function handleLogin() {
       
       fetchData();
       setInterval(async () => {
-        balanceCheckCount++;
-        if (balanceCheckCount % 6 === 0) {
           refreshBalance();
         }
         fetchData();
