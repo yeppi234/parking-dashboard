@@ -70,7 +70,6 @@
       display: none;
     }
 
-    /* 로딩 오버레이 */
     .loading-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -263,12 +262,6 @@
     }
     .row-new {
       animation: blinkNewRow 0.6s ease-in-out 5;
-    }
-
-    .empty {
-      text-align: center;
-      padding: 40px 20px;
-      color: #94a3b8;
     }
 
     .logout-btn {
@@ -475,7 +468,7 @@ function saveThreshold() {
 }
 
 // ============================================================
-// 🔐 로그인 (로딩 오버레이 추가)
+// 🔐 로그인
 // ============================================================
 async function handleLogin() {
   const id = document.getElementById('loginId').value;
@@ -489,7 +482,6 @@ async function handleLogin() {
     return;
   }
 
-  // 로딩창 표시 및 버튼 비활성화
   document.getElementById('loadingOverlay').classList.add('show');
   loginBtn.disabled = true;
   errorEl.style.display = 'none';
@@ -510,7 +502,6 @@ async function handleLogin() {
     }
 
     if (response.ok || response.status === 302) {
-      // 로그인 성공
       document.getElementById('loadingOverlay').classList.remove('show');
       loginBtn.disabled = false;
       document.getElementById('loginOverlay').style.display = 'none';
@@ -526,14 +517,12 @@ async function handleLogin() {
         fetchData();
       }, 5000);
     } else {
-      // 로그인 실패
       document.getElementById('loadingOverlay').classList.remove('show');
       loginBtn.disabled = false;
       errorEl.textContent = '❌ 아이디 또는 비밀번호가 올바르지 않습니다.';
       errorEl.style.display = 'block';
     }
   } catch (error) {
-    // 네트워크 오류
     document.getElementById('loadingOverlay').classList.remove('show');
     loginBtn.disabled = false;
     errorEl.textContent = '❌ 서버 연결에 실패했습니다.';
@@ -552,7 +541,7 @@ function handleLogout() {
 }
 
 // ============================================================
-// 💰 계정 잔여 금액 조회 (iframe 방식)
+// 💰 계정 잔여 금액 조회
 // ============================================================
 function fetchBalance() {
   return new Promise((resolve) => {
@@ -827,7 +816,7 @@ async function fetchData() {
 
     const detailedCars = [];
     for (const [carNo, car] of carMap) {
-      // ✅ 출차완료 차량도 실제 주차시간과 여유시간 계산
+      // 출차완료 차량도 실제 주차시간과 여유시간 계산
       if (car.paidStat === '10') {
         try {
           const detailResponse = await fetch(`${PROXY_BASE}/discount/registration/getForDiscount`, {
@@ -873,7 +862,7 @@ async function fetchData() {
         continue;
       }
       
-      // 미출차 차량 (기존 로직)
+      // 미출차 차량
       try {
         const detailResponse = await fetch(`${PROXY_BASE}/discount/registration/getForDiscount`, {
           method: 'POST',
@@ -945,4 +934,101 @@ function renderData(data) {
   const tbody = document.getElementById('tableBody');
   tbody.innerHTML = '';
   if (!data || data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8;">📭
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8;">📭 등록 내역이 없습니다.</td></tr>';
+    return;
+  }
+
+  data.forEach((row, idx) => {
+    const tr = document.createElement('tr');
+    let remainClass = '';
+    if (row.paidStat === '10') remainClass = '';
+    else if (row.remainTime <= 0) remainClass = 'highlight-red';
+    else if (row.remainTime <= 30) remainClass = 'highlight-orange';
+    else remainClass = 'highlight-green';
+    
+    const parkingDisplay = formatTime(row.parkingMinutes);
+    const remainDisplay = formatTime(row.remainTime);
+    const regDateDisplay = row.regDate ? fncDatetimeFormat(row.regDate) : '-';
+    const discountDisplay = row.totalDiscountTime > 0 ? formatTime(row.totalDiscountTime) : '-';
+
+    tr.innerHTML = `
+      <td>${idx + 1}</td>
+      <td><strong>${row.carNo}</strong></td>
+      <td>${regDateDisplay}</td>
+      <td>${parkingDisplay}</td>
+      <td>${discountDisplay}</td>
+      <td class="${remainClass}">${remainDisplay}</td>
+      <td><span class="${row.statusClass}">${row.statusText}</span></td>
+    `;
+
+    if (row.isNew) {
+      tr.classList.add('row-new');
+      setTimeout(() => {
+        tr.classList.remove('row-new');
+      }, 3000);
+    }
+
+    tbody.appendChild(tr);
+  });
+}
+
+// ============================================================
+// 🔧 유틸
+// ============================================================
+function formatTime(minutes) {
+  if (minutes <= 0) return '0분';
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  let result = '';
+  if (hours > 0) result += hours + '시간 ';
+  if (mins > 0) result += mins + '분';
+  return result.trim() || '0분';
+}
+function fncDatetimeFormat(dateStr) {
+  if (!dateStr) return '-';
+  const date = dateStr.substring(0, 8);
+  const time = dateStr.substring(8, 14);
+  return date.substring(0,4) + '-' + date.substring(4,6) + '-' + date.substring(6,8) + ' ' +
+         time.substring(0,2) + ':' + time.substring(2,4) + ':' + time.substring(4,6);
+}
+function sha256(message) {
+  function rightRotate(value, amount) { return (value >>> amount) | (value << (32 - amount)); }
+  const msgBytes = new TextEncoder().encode(message);
+  const msgLen = msgBytes.length;
+  const bitLen = msgLen * 8;
+  const paddingLen = 64 - ((msgLen + 8) % 64);
+  const totalLen = msgLen + paddingLen + 8;
+  const bytes = new Uint8Array(totalLen);
+  bytes.set(msgBytes, 0);
+  bytes[msgLen] = 0x80;
+  const view = new DataView(bytes.buffer);
+  view.setUint32(totalLen - 4, bitLen, false);
+  const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  let h0=0x6a09e667,h1=0xbb67ae85,h2=0x3c6ef372,h3=0xa54ff53a,h4=0x510e527f,h5=0x9b05688c,h6=0x1f83d9ab,h7=0x5be0cd19;
+  for (let i=0;i<bytes.length;i+=64) {
+    const w=new Uint32Array(64);
+    for (let j=0;j<16;j++) w[j]=(bytes[i+j*4]<<24)|(bytes[i+j*4+1]<<16)|(bytes[i+j*4+2]<<8)|bytes[i+j*4+3];
+    for (let j=16;j<64;j++) {
+      const s0=rightRotate(w[j-15],7)^rightRotate(w[j-15],18)^(w[j-15]>>>3);
+      const s1=rightRotate(w[j-2],17)^rightRotate(w[j-2],19)^(w[j-2]>>>10);
+      w[j]=(w[j-16]+s0+w[j-7]+s1)|0;
+    }
+    let a=h0,b=h1,c=h2,d=h3,e=h4,f=h5,g=h6,h=h7;
+    for (let j=0;j<64;j++) {
+      const S1=rightRotate(e,6)^rightRotate(e,11)^rightRotate(e,25);
+      const ch=(e&f)^(~e&g);
+      const temp1=(h+S1+ch+K[j]+w[j])|0;
+      const S0=rightRotate(a,2)^rightRotate(a,13)^rightRotate(a,22);
+      const maj=(a&b)^(a&c)^(b&c);
+      const temp2=(S0+maj)|0;
+      h=g;g=f;f=e;e=(d+temp1)|0;d=c;c=b;b=a;a=(temp1+temp2)|0;
+    }
+    h0=(h0+a)|0;h1=(h1+b)|0;h2=(h2+c)|0;h3=(h3+d)|0;h4=(h4+e)|0;h5=(h5+f)|0;h6=(h6+g)|0;h7=(h7+h)|0;
+  }
+  function toHex(num){return ('00000000'+(num>>>0).toString(16)).slice(-8);}
+  return toHex(h0)+toHex(h1)+toHex(h2)+toHex(h3)+toHex(h4)+toHex(h5)+toHex(h6)+toHex(h7);
+}
+</script>
+
+</body>
+</html>
