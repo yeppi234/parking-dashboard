@@ -6,15 +6,24 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Cookie, X-Requested-With');
 
-  // OPTIONS 요청 처리 (프리플라이트)
+  // OPTIONS 요청 처리
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   // ============================================================
+  // ✅ URL 경로 정규화
+  // ============================================================
+  const url = req.url || '';
+  const path = url.replace(/^\/api\/proxy/, '').replace(/^\/api/, '');
+  
+  console.log('📌 요청 URL:', url);
+  console.log('📌 정규화된 경로:', path);
+
+  // ============================================================
   // ✅ KV API: 출차 완료 차량 목록 조회
   // ============================================================
-  if (req.method === 'GET' && req.url === '/api/proxy/kv') {
+  if (req.method === 'GET' && path === '/kv') {
     try {
       const data = await kv.get('completedCars');
       return res.status(200).json({ data: data || [] });
@@ -27,7 +36,7 @@ export default async function handler(req, res) {
   // ============================================================
   // ✅ KV API: 출차 완료 차량 목록 저장
   // ============================================================
-  if (req.method === 'POST' && req.url === '/api/proxy/kv') {
+  if (req.method === 'POST' && path === '/kv') {
     try {
       const { data } = req.body;
       await kv.set('completedCars', JSON.stringify(data), { ex: 86400 });
@@ -41,7 +50,7 @@ export default async function handler(req, res) {
   // ============================================================
   // ✅ KV API: 모든 차량 주차시간 조회
   // ============================================================
-  if (req.method === 'GET' && req.url === '/api/proxy/kv/parking/all') {
+  if (req.method === 'GET' && path === '/kv/parking/all') {
     try {
       const data = await kv.get('parkingTimes');
       return res.status(200).json({ data: data || {} });
@@ -54,7 +63,7 @@ export default async function handler(req, res) {
   // ============================================================
   // ✅ KV API: 모든 차량 주차시간 저장
   // ============================================================
-  if (req.method === 'POST' && req.url === '/api/proxy/kv/parking/all') {
+  if (req.method === 'POST' && path === '/kv/parking/all') {
     try {
       const { data } = req.body;
       await kv.set('parkingTimes', JSON.stringify(data), { ex: 86400 });
@@ -66,9 +75,9 @@ export default async function handler(req, res) {
   }
 
   // ============================================================
-  // ✅ GET 요청: 프록시 상태 확인
+  // ✅ GET 요청: 상태 확인
   // ============================================================
-  if (req.method === 'GET') {
+  if (req.method === 'GET' && path === '/') {
     return res.status(200).json({ 
       status: 'ok', 
       message: 'Proxy is running',
@@ -81,11 +90,8 @@ export default async function handler(req, res) {
   // ============================================================
   if (req.method === 'POST') {
     try {
-      // /api/proxy 제거하고 실제 API 경로로 변환
-      let apiPath = req.url || '';
-      apiPath = apiPath.replace(/^\/api\/proxy/, '');
-      
-      const targetUrl = `https://a17574.parkingweb.kr${apiPath}`;
+      // 실제 API 경로로 변환 (로그인, 할인등록 등)
+      const targetUrl = `https://a17574.parkingweb.kr${path}`;
       console.log('🔄 프록시 요청:', targetUrl);
       console.log('📦 요청 본문:', req.body);
 
