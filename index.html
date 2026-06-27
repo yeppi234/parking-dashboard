@@ -484,6 +484,62 @@
       text-align: center;
       font-weight: 600;
     }
+
+    /* ===== 검색 결과 모달 ===== */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 999999;
+    }
+    .modal-overlay.show {
+      display: flex;
+    }
+    .modal-box {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      width: 90%;
+      max-width: 400px;
+      max-height: 80%;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .modal-box h3 {
+      margin-bottom: 16px;
+      color: #1a1a2e;
+      text-align: center;
+    }
+    .modal-box .modal-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f1f5f9;
+      cursor: pointer;
+    }
+    .modal-box .modal-item:hover { background: #f8fafc; }
+    .modal-box .modal-item .car-no {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .modal-box .modal-item .car-time {
+      font-size: 13px;
+      color: #888;
+    }
+    .modal-box .modal-close {
+      margin-top: 16px;
+      padding: 12px;
+      background: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      width: 100%;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .modal-box .modal-close:hover { background: #c0392b; }
   </style>
 </head>
 <body>
@@ -538,6 +594,24 @@
     <h3 id="detailModalTitle">🚗 차량번호 할인내역</h3>
     <div id="detailModalBody"></div>
     <button class="detail-modal-close" onclick="closeDetailModal()">닫기</button>
+  </div>
+</div>
+
+<!-- 검색 결과 모달 -->
+<div class="modal-overlay" id="searchModal">
+  <div class="modal-box">
+    <h3>🚗 차량을 선택해주세요</h3>
+    <div id="searchModalBody"></div>
+    <button class="modal-close" onclick="closeSearchModal()">취소</button>
+  </div>
+</div>
+
+<!-- 차량 상세 모달 (사진 + 정보) -->
+<div class="modal-overlay" id="carDetailModal">
+  <div class="modal-box" style="max-width:500px;">
+    <h3>🚗 차량 상세 정보</h3>
+    <div id="carDetailBody"></div>
+    <button class="modal-close" onclick="closeCarDetailModal()">닫기</button>
   </div>
 </div>
 
@@ -954,11 +1028,11 @@ async function handleSearch() {
       return;
     }
 
-    let message = `🔍 검색 결과 (${results.length}건)\n\n`;
-    results.forEach((item, idx) => {
-      message += `${idx + 1}. ${item.carNo} - 입차: ${item.entryDateToString || '-'}\n`;
-    });
-    showToast('📋 검색 결과', message, 'success');
+    if (results.length === 1) {
+      await fetchDetailAndShowResult(results[0].id);
+    } else {
+      showSearchModal(results);
+    }
 
   } catch (error) {
     console.error('검색 오류:', error);
@@ -966,6 +1040,166 @@ async function handleSearch() {
   } finally {
     document.getElementById('loadingOverlay').classList.remove('show');
   }
+}
+
+// ============================================================
+// 📋 검색 결과 모달
+// ============================================================
+function showSearchModal(results) {
+  const modal = document.getElementById('searchModal');
+  const body = document.getElementById('searchModalBody');
+  body.innerHTML = '';
+  
+  results.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'modal-item';
+    div.innerHTML = `
+      <div class="car-no">${item.carNo}</div>
+      <div class="car-time">입차시간: ${item.entryDateToString || '-'}</div>
+    `;
+    div.onclick = () => {
+      closeSearchModal();
+      fetchDetailAndShowResult(item.id);
+    };
+    body.appendChild(div);
+  });
+  
+  modal.classList.add('show');
+}
+
+function closeSearchModal() {
+  document.getElementById('searchModal').classList.remove('show');
+}
+
+// ============================================================
+// 📊 상세 정보 조회 (사진 포함)
+// ============================================================
+async function fetchDetailAndShowResult(id) {
+  document.getElementById('loadingOverlay').classList.add('show');
+  document.getElementById('loadingText').textContent = '상세 정보 조회 중...';
+
+  try {
+    const response = await fetch(`${PROXY_BASE}/discount/registration/getForDiscount`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'include',
+      body: new URLSearchParams({
+        id: id,
+        member_id: 'oasis_g'
+      })
+    });
+
+    if (response.status === 403 || response.status === 401) {
+      handleLogout();
+      showToast('⚠️ 세션 만료', '다시 로그인해주세요', 'danger');
+      document.getElementById('loadingOverlay').classList.remove('show');
+      return;
+    }
+
+    const detail = await response.json();
+    const discountList = detail.listDiscountType || [];
+    const parkVisitCar = detail.parkVisitCar || [];
+    const existingMinutes = parkVisitCar.reduce((sum, item) => sum + (parseFloat(item.dc_time) || 0), 0);
+    const data = detail.parkEntry;
+    
+    // ✅ 사진 URL
+    const picturePath = data.acEntrancePicName || '';
+    const pictureUrl = picturePath.startsWith('http') ? picturePath : `https://a17574.parkingweb.kr/image${picturePath}`;
+    
+    const parsed = parseParkingTime(data.different_time);
+    const hours = parsed.hours;
+    const minutes = parsed.minutes;
+    const displayDays = Math.floor(hours / 24);
+    const displayHours = hours % 24;
+    let formattedTime = '';
+    if (displayDays > 0) formattedTime += `${displayDays}일 `;
+    if (displayHours > 0) formattedTime += ${displayHours}시간 `;
+    if (minutes > 0) formattedTime += `${minutes}분`;
+    if (!formattedTime) formattedTime = '0분';
+
+    // ✅ 모달에 사진과 정보 표시
+    showCarDetailModal({
+      carNo: data.acPlate1,
+      parkingTime: formattedTime,
+      pictureUrl: pictureUrl,
+      discountList: discountList,
+      existingMinutes: existingMinutes,
+      parkVisitCar: parkVisitCar
+    });
+
+  } catch (error) {
+    console.error('상세 조회 오류:', error);
+    showToast('❌ 상세 조회 실패', error.message || '상세 정보를 불러오지 못했습니다', 'danger');
+  } finally {
+    document.getElementById('loadingOverlay').classList.remove('show');
+  }
+}
+
+// ============================================================
+// 📋 차량 상세 모달 (사진 + 정보)
+// ============================================================
+function showCarDetailModal(data) {
+  const modal = document.getElementById('carDetailModal');
+  const body = document.getElementById('carDetailBody');
+  
+  // 할인내역 리스트
+  let discountHtml = '';
+  if (data.discountList && data.discountList.length > 0) {
+    data.discountList.forEach(item => {
+      discountHtml += `<div class="detail-item">${item.discount_name || '할인'} (${item.discount_value || 0}분)</div>`;
+    });
+  } else {
+    discountHtml = '<div class="detail-item">할인 내역 없음</div>';
+  }
+
+  // 기존 등록 여부 확인
+  const hasOasisRegistration = data.parkVisitCar?.some(item => {
+    const account = item.account_no || '';
+    const name = item.name || '';
+    return account.includes('oasis') || name.includes('oasis');
+  });
+
+  body.innerHTML = `
+    <div style="text-align:center; margin-bottom:16px;">
+      ${data.pictureUrl ? 
+        `<img src="${data.pictureUrl}" style="width:100%; max-height:300px; border-radius:8px; object-fit:cover;" onerror="this.style.display='none'">` :
+        `<div style="padding:40px; background:#f0f0f0; border-radius:8px;">📷 입차 사진 없음</div>`
+      }
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+      <div style="padding:10px; background:#f8fafc; border-radius:8px;">
+        <div style="font-size:12px; color:#888;">🚗 차량번호</div>
+        <div style="font-size:20px; font-weight:700;">${data.carNo}</div>
+      </div>
+      <div style="padding:10px; background:#f8fafc; border-radius:8px;">
+        <div style="font-size:12px; color:#888;">⏱️ 주차시간</div>
+        <div style="font-size:20px; font-weight:700;">${data.parkingTime}</div>
+      </div>
+    </div>
+    <div style="padding:10px; background:#f8fafc; border-radius:8px; margin-bottom:12px;">
+      <div style="font-size:12px; color:#888;">💰 할인내역</div>
+      <div style="font-size:16px; font-weight:600; margin-top:4px;">${discountHtml}</div>
+    </div>
+    <div style="padding:10px; background:#f8fafc; border-radius:8px; margin-bottom:12px;">
+      <div style="font-size:12px; color:#888;">📋 기존할인 시간</div>
+      <div style="font-size:16px; font-weight:600; margin-top:4px;">${formatTime(data.existingMinutes)}</div>
+    </div>
+    <div style="padding:10px; border-radius:8px; margin-bottom:12px; ${hasOasisRegistration ? 'background:#fef2f2; border:1px solid #ef4444;' : 'background:#f0fdf4; border:1px solid #22c55e;'}">
+      <div style="font-size:12px; color:#888;">📌 등록 상태</div>
+      <div style="font-size:16px; font-weight:700; margin-top:4px; ${hasOasisRegistration ? 'color:#dc2626;' : 'color:#16a34a;'}">
+        ${hasOasisRegistration ? '⚠️ 이미 등록된 차량입니다' : '✅ 등록 가능한 차량입니다'}
+      </div>
+    </div>
+  `;
+  
+  modal.classList.add('show');
+}
+
+function closeCarDetailModal() {
+  document.getElementById('carDetailModal').classList.remove('show');
 }
 
 // ============================================================
@@ -1338,6 +1572,8 @@ window.handleSearch = handleSearch;
 window.fetchData = fetchData;
 window.showDiscountDetails = showDiscountDetails;
 window.closeDetailModal = closeDetailModal;
+window.closeSearchModal = closeSearchModal;
+window.closeCarDetailModal = closeCarDetailModal;
 window.openThresholdModal = openThresholdModal;
 window.closeThresholdModal = closeThresholdModal;
 window.saveThreshold = saveThreshold;
