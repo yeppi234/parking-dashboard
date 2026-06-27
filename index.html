@@ -1,1380 +1,1445 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>실시간 할인등록 현황</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, 'Segoe UI', sans-serif;
-      background: #f0f2f5;
-      padding: 16px;
-    }
-    .container { max-width: 1400px; margin: 0 auto; }
-    
-    .login-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.5);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-    }
-    .login-box {
-      background: white;
-      padding: 40px;
-      border-radius: 16px;
-      width: 90%;
-      max-width: 380px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    }
-    .login-box h2 { text-align: center; margin-bottom: 8px; color: #1a1a2e; }
-    .login-box p { text-align: center; color: #666; margin-bottom: 24px; font-size: 14px; }
-    .login-box input {
-      width: 100%;
-      padding: 14px 16px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      font-size: 16px;
-      margin-bottom: 12px;
-      background: #f8fafc;
-    }
-    .login-box input:focus {
-      border-color: #3b82f6;
-      outline: none;
-      background: white;
-    }
-    .login-box button {
-      width: 100%;
-      padding: 14px;
-      background: #3b82f6;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .login-box button:hover { background: #2563eb; }
-    .login-box button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    .login-error {
-      color: #dc2626;
-      font-size: 14px;
-      text-align: center;
-      margin-bottom: 12px;
-      display: none;
-    }
-    .login-success {
-      color: #16a34a;
-      font-size: 14px;
-      text-align: center;
-      margin-bottom: 12px;
-      display: none;
-    }
-    .remember-me {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 16px;
-      font-size: 14px;
-      color: #666;
-    }
-    .remember-me input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      margin: 0;
-      cursor: pointer;
-    }
-
-    .loading-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.5);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 99999;
-    }
-    .loading-overlay.show {
-      display: flex;
-    }
-    .loading-box {
-      background: white;
-      padding: 40px 48px;
-      border-radius: 16px;
-      text-align: center;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      min-width: 200px;
-    }
-    .loading-spinner {
-      width: 48px;
-      height: 48px;
-      border: 4px solid #e5e7eb;
-      border-top-color: #3b82f6;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin: 0 auto 16px;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    .loading-box p {
-      color: #1a1a2e;
-      font-size: 16px;
-      font-weight: 500;
-      margin: 0;
-    }
-
-    .header {
-      background: white;
-      padding: 16px 20px;
-      border-radius: 12px;
-      margin-bottom: 16px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .header h1 { font-size: 20px; color: #1a1a2e; }
-    .header .time { color: #666; font-size: 13px; }
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .threshold-btn {
-      background: #f59e0b;
-      color: white;
-      border: none;
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .threshold-btn:hover { background: #d97706; }
-
-    .threshold-modal {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.5);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 99999;
-    }
-    .threshold-modal.show { display: flex; }
-    .threshold-box {
-      background: white;
-      padding: 32px;
-      border-radius: 16px;
-      width: 90%;
-      max-width: 360px;
-      text-align: center;
-    }
-    .threshold-box h3 { margin-bottom: 8px; color: #1a1a2e; }
-    .threshold-box p { color: #666; font-size: 14px; margin-bottom: 16px; }
-    .threshold-box input {
-      width: 100%;
-      padding: 12px 16px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      font-size: 18px;
-      text-align: center;
-      margin-bottom: 16px;
-    }
-    .threshold-box .btn-row {
-      display: flex;
-      gap: 12px;
-    }
-    .threshold-box .btn-row button {
-      flex: 1;
-      padding: 12px;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .threshold-box .btn-save { background: #3b82f6; color: white; }
-    .threshold-box .btn-save:hover { background: #2563eb; }
-    .threshold-box .btn-cancel { background: #e5e7eb; color: #374151; }
-    .threshold-box .btn-cancel:hover { background: #d1d5db; }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-    @media (min-width: 768px) {
-      .stats { grid-template-columns: repeat(2, 1fr); }
-    }
-    .stat-card {
-      background: white;
-      padding: 14px 16px;
-      border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-      border-left: 4px solid #3b82f6;
-    }
-    .stat-card:nth-child(2) { border-left-color: #22c55e; }
-    .stat-label { font-size: 12px; color: #888; }
-    .stat-value { font-size: 24px; font-weight: 700; color: #1a1a2e; margin-top: 2px; }
-    .stat-value.danger { color: #dc2626; }
-    .stat-value.warning { color: #d97706; }
-    .stat-value.success { color: #16a34a; }
-
-    .refresh-balance-btn {
-      background: none;
-      border: none;
-      font-size: 20px;
-      cursor: pointer;
-      padding: 4px 8px;
-      border-radius: 8px;
-      transition: all 0.2s;
-    }
-    .refresh-balance-btn:hover {
-      background: #f0f0f0;
-      transform: rotate(180deg);
-    }
-
-    .table-wrap {
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-      overflow: hidden;
-    }
-    .table-scroll {
-      overflow-x: auto;
-      padding: 0 4px;
-      -webkit-overflow-scrolling: touch;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-      min-width: auto;
-    }
-    thead {
-      background: #f8fafc;
-      border-bottom: 2px solid #e5e7eb;
-    }
-    th {
-      text-align: left;
-      padding: 8px 10px;
-      font-weight: 600;
-      color: #475569;
-      white-space: nowrap;
-    }
-    td {
-      padding: 8px 10px;
-      border-bottom: 1px solid #f1f5f9;
-      color: #1a1a2e;
-    }
-    tbody tr:hover { background: #f8fafc; }
-
-    th:first-child, td:first-child { min-width: 35px; max-width: 40px; text-align: center; }
-    th:nth-child(2), td:nth-child(2) { min-width: 70px; max-width: 90px; }
-    th:nth-child(3), td:nth-child(3) { min-width: 100px; max-width: 130px; }
-    th:nth-child(4), td:nth-child(4) { min-width: 55px; max-width: 75px; }
-    th:nth-child(5), td:nth-child(5) { min-width: 55px; max-width: 100px; }
-    th:nth-child(6), td:nth-child(6) { min-width: 55px; max-width: 75px; }
-    th:last-child, td:last-child { min-width: 55px; max-width: 65px; text-align: center; }
-
-    .discount-detail-btn {
-      color: #3b82f6;
-      cursor: pointer;
-      text-decoration: underline;
-      font-size: 11px;
-    }
-    .discount-detail-btn:hover { color: #2563eb; }
-
-    @media (max-width: 768px) {
-      table { font-size: 10px; }
-      th, td { padding: 4px 6px; }
-      th:nth-child(3), td:nth-child(3) { min-width: 80px; max-width: 100px; }
-    }
-
-    @media (max-width: 480px) {
-      table { font-size: 9px; }
-      th, td { padding: 3px 4px; }
-      th:nth-child(3), td:nth-child(3) { min-width: 60px; max-width: 80px; }
-      .discount-detail-btn { font-size: 9px; }
-    }
-
-    .auto-refresh-badge {
-      display: inline-block;
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
-
-    @keyframes blinkNewRow {
-      0% { background-color: #fff3cd; }
-      50% { background-color: #ffeaa7; }
-      100% { background-color: #fff3cd; }
-    }
-    .row-new {
-      animation: blinkNewRow 0.6s ease-in-out 5;
-    }
-
-    .logout-btn {
-      background: #ef4444;
-      color: white;
-      border: none;
-      padding: 6px 16px;
-      border-radius: 6px;
-      font-size: 13px;
-      cursor: pointer;
-    }
-    .logout-btn:hover { background: #dc2626; }
-    
-    .highlight-red { color: #dc2626; font-weight: 600; }
-    .highlight-orange { color: #d97706; font-weight: 600; }
-    .highlight-green { color: #16a34a; font-weight: 600; }
-
-    .status-complete { color: #16a34a; }
-    .status-pending { color: #d97706; }
-    .status-overdue { color: #dc2626; font-weight: 600; }
-
-    .toast-container {
-      position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 99999;
-      background: #1a1a2e;
-      color: white;
-      padding: 16px 24px;
-      border-radius: 12px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
-      max-width: 90%;
-      text-align: center;
-      font-size: 15px;
-      transition: all 0.5s ease;
-      opacity: 0;
-      pointer-events: none;
-      min-width: 200px;
-    }
-    .toast-container.show {
-      opacity: 1;
-      pointer-events: auto;
-    }
-    .toast-container .toast-title {
-      font-weight: 700;
-      font-size: 17px;
-      display: block;
-      margin-bottom: 4px;
-    }
-    .toast-container .toast-message {
-      font-size: 14px;
-      opacity: 0.9;
-    }
-    .toast-warning { border-left: 4px solid #f59e0b; }
-    .toast-success { border-left: 4px solid #22c55e; }
-    .toast-danger { border-left: 4px solid #ef4444; }
-
-    .detail-modal-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.5);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 999999;
-    }
-    .detail-modal-overlay.show {
-      display: flex;
-    }
-    .detail-modal-box {
-      background: white;
-      border-radius: 16px;
-      padding: 24px;
-      width: 90%;
-      max-width: 500px;
-      max-height: 80%;
-      overflow-y: auto;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    }
-    .detail-modal-box h3 {
-      margin-bottom: 16px;
-      color: #1a1a2e;
-      text-align: center;
-    }
-    .detail-modal-box table {
-      width: 100%;
-      font-size: 13px;
-      border-collapse: collapse;
-    }
-    .detail-modal-box th {
-      background: #f8fafc;
-      padding: 8px 10px;
-      text-align: left;
-      border-bottom: 2px solid #e5e7eb;
-    }
-    .detail-modal-box td {
-      padding: 8px 10px;
-      border-bottom: 1px solid #f1f5f9;
-    }
-    .detail-modal-close {
-      margin-top: 16px;
-      padding: 12px;
-      background: #e74c3c;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      width: 100%;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .detail-modal-close:hover { background: #c0392b; }
-    .detail-total-time {
-      margin-top: 12px;
-      padding: 10px;
-      background: #f0f7ff;
-      border-radius: 8px;
-      text-align: center;
-      font-weight: 600;
-    }
-
-    .login-options {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-    .find-account {
-      font-size: 13px;
-      color: #3b82f6;
-      cursor: pointer;
-      text-decoration: underline;
-    }
-    .find-account:hover { color: #2563eb; }
-  </style>
-</head>
-<body>
-
-<!-- 로그인 모달 -->
-<div class="login-overlay" id="loginOverlay">
-  <div class="login-box">
-    <h2>🔐 로그인</h2>
-    <p>할인등록 현황을 보려면 로그인해주세요.</p>
-    <div class="login-error" id="loginError">❌ 아이디 또는 비밀번호가 올바르지 않습니다.</div>
-    <div class="login-success" id="loginSuccess">✅ 로그인 성공! 잠시 후 대시보드로 이동합니다.</div>
-    
-    <!-- 🔥 수정: 하드코딩 제거 -->
-    <input type="text" id="loginId" placeholder="아이디를 입력하세요">
-    <input type="password" id="loginPw" placeholder="비밀번호를 입력하세요">
-    
-    <div class="login-options">
-      <div class="remember-me">
-        <input type="checkbox" id="rememberMe" checked>
-        <label for="rememberMe">로그인 정보 저장</label>
-      </div>
-      <span class="find-account" onclick="alert('관리자에게 문의해주세요.')">계정 찾기</span>
-    </div>
-    
-    <button id="loginBtn" onclick="handleLogin()">로그인</button>
-  </div>
-</div>
-
-<!-- 로딩 오버레이 -->
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="loading-box">
-    <div class="loading-spinner"></div>
-    <p>로그인 중...</p>
-  </div>
-</div>
-
-<!-- 토스트 알림 -->
-<div class="toast-container" id="toastContainer">
-  <span class="toast-title" id="toastTitle">⚠️ 계정 잔액 부족</span>
-  <span class="toast-message" id="toastMessage">잔여 금액이 10,000원 미만입니다. 충전이 필요합니다.</span>
-</div>
-
-<!-- 임계값 설정 모달 -->
-<div class="threshold-modal" id="thresholdModal">
-  <div class="threshold-box">
-    <h3>⚙️ 잔액 알림 설정</h3>
-    <p>잔여 금액이 설정한 금액 이하로 떨어지면 알림이 뜹니다.</p>
-    <input type="number" id="thresholdInput" value="10000" step="1000">
-    <div class="btn-row">
-      <button class="btn-cancel" onclick="closeThresholdModal()">취소</button>
-      <button class="btn-save" onclick="saveThreshold()">저장</button>
-    </div>
-  </div>
-</div>
-
-<!-- 할인내역 상세 모달 -->
-<div class="detail-modal-overlay" id="detailModal">
-  <div class="detail-modal-box">
-    <h3 id="detailModalTitle">🚗 차량번호 할인내역</h3>
-    <div id="detailModalBody"></div>
-    <button class="detail-modal-close" onclick="closeDetailModal()">닫기</button>
-  </div>
-</div>
-
-<div class="container" id="mainContent" style="display:none;">
-  <div class="header">
-    <div>
-      <h1>📊 할인등록 현황</h1>
-      <span style="font-size:13px;color:#94a3b8;">
-        <span class="auto-refresh-badge">●</span> 5초 자동 갱신
-      </span>
-    </div>
-    <div class="header-right">
-      <button class="threshold-btn" onclick="openThresholdModal()">⚙️ 알림 설정</button>
-      <span class="time" id="updateTime" style="margin-left:12px;">--:--:--</span>
-      <button class="logout-btn" onclick="handleLogout()">로그아웃</button>
-    </div>
-  </div>
-
-  <div class="stats" id="statsContainer">
-    <div class="stat-card">
-      <div class="stat-label">등록대수</div>
-      <div class="stat-value" id="statTotal">0</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">💰 계정 잔여 금액</div>
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <div class="stat-value" id="statRemain">0원</div>
-        <button class="refresh-balance-btn" onclick="fetchData()" title="잔액 새로고침">🔄</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="table-wrap">
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>순번</th>
-            <th>차량번호</th>
-            <th>할인등록시간</th>
-            <th>주차시간</th>
-            <th>할인내역</th>
-            <th>출차여유시간</th>
-            <th>상태</th>
-          </tr>
-        </thead>
-        <tbody id="tableBody">
-          <tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8;">⏳ 데이터 로딩 중...</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<script>
-// ============================================================
-// ✅ Vercel 프록시 주소
-// ============================================================
-const PROXY_BASE = 'https://oasis-parking.vercel.app/api/proxy';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  ScrollView,
+  Animated,
+  Modal,
+  FlatList,
+  TextInput,
+  Alert,
+  useWindowDimensions,
+  StatusBar,
+  Platform,
+} from 'react-native';
+import axios from 'axios';
 
 // ============================================================
-// ⚙️ 설정
+// 🔐 순수 자바스크립트 SHA-256 해싱 함수 (패키지 설치 불필요)
 // ============================================================
-const STORAGE_KEY = 'threshold_amount';
-const BALANCE_KEY = 'last_balance';
-const CREDENTIALS_KEY = 'saved_credentials';
-let THRESHOLD_AMOUNT = parseInt(localStorage.getItem(STORAGE_KEY)) || 10000;
-let sessionId = '';
-let lastToastShown = {};
-let currentBalance = 0;
-let prevCarNos = new Set();
-let allCarsData = [];
-let refreshInterval = null;
-
-// ============================================================
-// 💾 저장된 로그인 정보 불러오기
-// ============================================================
-function loadSavedCredentials() {
-  try {
-    const saved = localStorage.getItem(CREDENTIALS_KEY);
-    if (saved) {
-      const data = JSON.parse(saved);
-      if (data.id && data.pw) {
-        document.getElementById('loginId').value = data.id;
-        document.getElementById('loginPw').value = data.pw;
-        document.getElementById('rememberMe').checked = true;
-        return true;
-      }
+function sha256(message) {
+    function rightRotate(value, amount) {
+        return (value >>> amount) | (value << (32 - amount));
     }
-  } catch (e) {
-    console.warn('⚠️ 저장된 정보 로드 실패:', e);
-  }
-  return false;
+
+    const msgBytes = new TextEncoder().encode(message);
+    const msgLen = msgBytes.length;
+    const bitLen = msgLen * 8;
+
+    const paddingLen = 64 - ((msgLen + 8) % 64);
+    const totalLen = msgLen + paddingLen + 8;
+    const bytes = new Uint8Array(totalLen);
+    bytes.set(msgBytes, 0);
+    bytes[msgLen] = 0x80;
+
+    const view = new DataView(bytes.buffer);
+    view.setUint32(totalLen - 4, bitLen, false);
+
+    const K = [
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+    ];
+
+    let h0 = 0x6a09e667, h1 = 0xbb67ae85, h2 = 0x3c6ef372, h3 = 0xa54ff53a;
+    let h4 = 0x510e527f, h5 = 0x9b05688c, h6 = 0x1f83d9ab, h7 = 0x5be0cd19;
+
+    for (let i = 0; i < bytes.length; i += 64) {
+        const w = new Uint32Array(64);
+        for (let j = 0; j < 16; j++) {
+            w[j] = (bytes[i + j * 4] << 24) | (bytes[i + j * 4 + 1] << 16) |
+                (bytes[i + j * 4 + 2] << 8) | bytes[i + j * 4 + 3];
+        }
+        for (let j = 16; j < 64; j++) {
+            const s0 = rightRotate(w[j - 15], 7) ^ rightRotate(w[j - 15], 18) ^ (w[j - 15] >>> 3);
+            const s1 = rightRotate(w[j - 2], 17) ^ rightRotate(w[j - 2], 19) ^ (w[j - 2] >>> 10);
+            w[j] = (w[j - 16] + s0 + w[j - 7] + s1) | 0;
+        }
+
+        let a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
+
+        for (let j = 0; j < 64; j++) {
+            const S1 = rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25);
+            const ch = (e & f) ^ (~e & g);
+            const temp1 = (h + S1 + ch + K[j] + w[j]) | 0;
+            const S0 = rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22);
+            const maj = (a & b) ^ (a & c) ^ (b & c);
+            const temp2 = (S0 + maj) | 0;
+
+            h = g;
+            g = f;
+            f = e;
+            e = (d + temp1) | 0;
+            d = c;
+            c = b;
+            b = a;
+            a = (temp1 + temp2) | 0;
+        }
+
+        h0 = (h0 + a) | 0;
+        h1 = (h1 + b) | 0;
+        h2 = (h2 + c) | 0;
+        h3 = (h3 + d) | 0;
+        h4 = (h4 + e) | 0;
+        h5 = (h5 + f) | 0;
+        h6 = (h6 + g) | 0;
+        h7 = (h7 + h) | 0;
+    }
+
+    function toHex(num) {
+        return ('00000000' + (num >>> 0).toString(16)).slice(-8);
+    }
+
+    return toHex(h0) + toHex(h1) + toHex(h2) + toHex(h3) +
+        toHex(h4) + toHex(h5) + toHex(h6) + toHex(h7);
 }
 
 // ============================================================
-// 💾 로그인 정보 저장
+// 💾 메모리 스토리지 (AsyncStorage 대체 - 설치 불필요)
 // ============================================================
-function saveCredentials(id, pw) {
-  try {
-    localStorage.setItem(CREDENTIALS_KEY, JSON.stringify({ id, pw }));
-  } catch (e) {
-    console.warn('⚠️ 정보 저장 실패:', e);
-  }
-}
+let memoryStorage = {};
+
+const storage = {
+  setItem: (key, value) => {
+    memoryStorage[key] = value;
+    console.log(`💾 저장됨: ${key} = ${value}`);
+    return Promise.resolve();
+  },
+  getItem: (key) => {
+    const value = memoryStorage[key] || null;
+    console.log(`📖 읽기: ${key} = ${value}`);
+    return Promise.resolve(value);
+  },
+  removeItem: (key) => {
+    delete memoryStorage[key];
+    return Promise.resolve();
+  },
+};
 
 // ============================================================
-// 💾 로그인 정보 삭제
+// API 기본 설정
 // ============================================================
-function clearCredentials() {
-  try {
-    localStorage.removeItem(CREDENTIALS_KEY);
-  } catch (e) {
-    console.warn('⚠️ 정보 삭제 실패:', e);
-  }
-}
+const API_URL = 'https://a17574.parkingweb.kr';
+const LOGIN_URL = 'https://a17574.parkingweb.kr/login';
+
+const apiClient = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'X-Requested-With': 'XMLHttpRequest',
+    'Accept': 'application/json, text/plain, */*',
+    'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
+  },
+  withCredentials: false,
+});
 
 // ============================================================
-// 🍞 토스트 알림
+// 🔐 자동 로그인 함수 (SHA-256 적용)
 // ============================================================
-function showToast(title, message, type = 'warning') {
-  const container = document.getElementById('toastContainer');
-  const titleEl = document.getElementById('toastTitle');
-  const msgEl = document.getElementById('toastMessage');
-  titleEl.textContent = title;
-  msgEl.textContent = message;
-  container.className = `toast-container show toast-${type}`;
-  clearTimeout(window.toastTimer);
-  window.toastTimer = setTimeout(() => {
-    container.className = 'toast-container';
-  }, 4000);
-}
-
-// ============================================================
-// ⚙️ 임계값 설정
-// ============================================================
-function openThresholdModal() {
-  document.getElementById('thresholdInput').value = THRESHOLD_AMOUNT;
-  document.getElementById('thresholdModal').classList.add('show');
-}
-function closeThresholdModal() {
-  document.getElementById('thresholdModal').classList.remove('show');
-}
-function saveThreshold() {
-  const val = parseInt(document.getElementById('thresholdInput').value);
-  if (val > 0) {
-    THRESHOLD_AMOUNT = val;
-    localStorage.setItem(STORAGE_KEY, val);
-    closeThresholdModal();
-    showToast('✅ 설정 완료', `잔액 알림 금액이 ${val.toLocaleString()}원으로 설정되었습니다.`, 'success');
-  } else {
-    alert('0보다 큰 금액을 입력해주세요.');
-  }
-}
-
-// ============================================================
-// 🔐 로그인 (하드코딩 제거)
-// ============================================================
-async function handleLogin() {
-  const id = document.getElementById('loginId').value.trim();
-  const pw = document.getElementById('loginPw').value.trim();
-  const rememberMe = document.getElementById('rememberMe').checked;
-  const errorEl = document.getElementById('loginError');
-  const successEl = document.getElementById('loginSuccess');
-  const loginBtn = document.getElementById('loginBtn');
-
-  // ✅ 입력값 검증
-  if (!id || !pw) {
-    errorEl.textContent = '❌ 아이디와 비밀번호를 모두 입력해주세요.';
-    errorEl.style.display = 'block';
-    successEl.style.display = 'none';
-    return;
-  }
-
-  // ✅ 최소 길이 검증
-  if (id.length < 2 || pw.length < 4) {
-    errorEl.textContent = '❌ 아이디는 2자 이상, 비밀번호는 4자 이상이어야 합니다.';
-    errorEl.style.display = 'block';
-    successEl.style.display = 'none';
-    return;
-  }
-
-  document.getElementById('loadingOverlay').classList.add('show');
-  loginBtn.disabled = true;
-  errorEl.style.display = 'none';
-  successEl.style.display = 'none';
-
+const performAutoLogin = async (id, pw) => {
   try {
     const hashedPw = sha256(pw);
-    const response = await fetch(`${PROXY_BASE}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      credentials: 'include',
-      body: `userId=${encodeURIComponent(id)}&userPwd=${hashedPw}`
+    const postData = `userId=${encodeURIComponent(id)}&userPwd=${hashedPw}`;
+
+    const response = await axios.post(LOGIN_URL, postData, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Referer': LOGIN_URL,
+      },
+      maxRedirects: 0,
+      validateStatus: (status) => status >= 200 && status < 400,
+      timeout: 10000,
     });
 
-    const setCookieHeader = response.headers.get('set-cookie');
-    if (setCookieHeader) {
-      const match = setCookieHeader.match(/JSESSIONID=([^;]+)/);
-      if (match) {
-        sessionId = match[1];
-        document.cookie = `JSESSIONID=${sessionId}; path=/;`;
-        console.log('✅ 세션 ID 저장됨:', sessionId);
+    const setCookie = response.headers['set-cookie'];
+    if (setCookie) {
+      const cookieString = Array.isArray(setCookie) ? setCookie.join('; ') : setCookie;
+      const match = cookieString.match(/JSESSIONID=([^;]+)/);
+      if (match && match[1]) {
+        return { success: true, sessionId: match[1] };
       }
     }
-
-    const html = await response.text();
-    const balance = extractBalanceFromHTML(html);
-
-    if (response.ok || response.status === 302) {
-      // ✅ 로그인 성공 시 정보 저장
-      if (rememberMe) {
-        saveCredentials(id, pw);
-      } else {
-        clearCredentials();
-      }
-
-      if (balance > 0) {
-        currentBalance = balance;
-        localStorage.setItem(BALANCE_KEY, balance.toString());
-        updateBalanceDisplay(balance);
-      }
-
-      document.getElementById('loadingOverlay').classList.remove('show');
-      loginBtn.disabled = false;
-      document.getElementById('loginOverlay').style.display = 'none';
-      document.getElementById('mainContent').style.display = 'block';
-      
-      fetchData();
-      
-      // ✅ 기존 인터벌 제거 후 재설정
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
-      }
-      refreshInterval = setInterval(() => {
-        fetchData();
-      }, 5000);
-    } else {
-      document.getElementById('loadingOverlay').classList.remove('show');
-      loginBtn.disabled = false;
-      errorEl.textContent = '❌ 아이디 또는 비밀번호가 올바르지 않습니다.';
-      errorEl.style.display = 'block';
-    }
+    return { success: false, error: '로그인 응답에서 세션을 찾을 수 없습니다.' };
+    
   } catch (error) {
-    document.getElementById('loadingOverlay').classList.remove('show');
-    loginBtn.disabled = false;
-    errorEl.textContent = '❌ 서버 연결에 실패했습니다.';
-    errorEl.style.display = 'block';
-    console.error('Login error:', error);
-  }
-}
+    console.error('로그인 실패 상세:', error);
 
-// ✅ HTML에서 잔액 추출 함수
-function extractBalanceFromHTML(html) {
-  try {
-    const match1 = html.match(/id="lblRemainTimeCharge"[^>]*>([^<]+)<\/label>/);
-    if (match1) {
-      const val = parseInt(match1[1].replace(/,/g, '').trim());
-      if (val > 0) return val;
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      return { success: false, error: '⏰ 요청 시간이 초과되었습니다. (10초)' };
     }
-    
-    const match2 = html.match(/id="extraCharge"[^>]*>([^<]+)<\/label>/);
-    if (match2) {
-      const val = parseInt(match2[1].replace(/,/g, '').trim());
-      if (val > 0) return val;
-    }
-    
-    const match3 = html.match(/id="[^"]*(?:remain|charge)[^"]*"[^>]*value="([^"]+)"/i);
-    if (match3) {
-      const val = parseInt(match3[1].replace(/,/g, '').trim());
-      if (val > 0) return val;
-    }
-    
-    const saved = localStorage.getItem(BALANCE_KEY);
-    if (saved !== null) {
-      return parseInt(saved);
-    }
-    
-    return 0;
-  } catch (e) {
-    console.warn('⚠️ 잔액 추출 실패:', e);
-    const saved = localStorage.getItem(BALANCE_KEY);
-    if (saved !== null) {
-      return parseInt(saved);
-    }
-    return 0;
-  }
-}
 
-// ✅ 잔액 갱신
-async function refreshBalance(showAlert = false) {
-  console.log('🔄 잔액 갱신 시작...');
-  try {
-    const response = await fetch(`${PROXY_BASE}/discount/registration`, {
-      credentials: 'include'
-    });
-    
-    const html = await response.text();
-    const balance = extractBalanceFromHTML(html);
-    
-    if (balance > 0) {
-      currentBalance = balance;
-      localStorage.setItem(BALANCE_KEY, balance.toString());
-      updateBalanceDisplay(balance);
-      console.log('💰 잔액 갱신:', balance);
-      
-      if (showAlert) {
-        showToast('✅ 잔액 갱신 완료', `${balance.toLocaleString()}원`, 'success');
-      }
-      
-      if (balance < THRESHOLD_AMOUNT) {
-        showToast('⚠️ 계정 잔액 부족', `현재 잔여 금액이 ${balance.toLocaleString()}원 입니다. (임계값: ${THRESHOLD_AMOUNT.toLocaleString()}원)`, 'warning');
-      }
-    } else {
-      console.warn('⚠️ 잔액이 0이거나 추출 실패');
-      if (showAlert) {
-        showToast('❌ 갱신 실패', '잔액을 불러오지 못했습니다.', 'danger');
-      }
+    if (error.response) {
+      const status = error.response.status;
+      let msg = error.response.data?.errorMsg || error.response.data?.message || '';
+      return { success: false, error: `서버 오류 (${status}): ${msg}` };
     }
-  } catch (e) {
-    console.warn('⚠️ 잔액 갱신 실패:', e);
-    if (showAlert) {
-      showToast('❌ 갱신 실패', '잔액을 불러오지 못했습니다.', 'danger');
-    }
-  }
-}
 
-function handleLogout() {
-  // ✅ 로그아웃 시 저장된 정보 삭제 (선택적)
-  if (!document.getElementById('rememberMe').checked) {
-    clearCredentials();
+    return { success: false, error: `🌐 네트워크 오류: ${error.message}` };
   }
-  
-  document.getElementById('loginOverlay').style.display = 'flex';
-  document.getElementById('mainContent').style.display = 'none';
-  document.getElementById('loginError').style.display = 'none';
-  document.getElementById('loginSuccess').style.display = 'none';
-  sessionId = '';
-  currentBalance = 0;
-  prevCarNos = new Set();
-  document.cookie = 'JSESSIONID=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-  
-  if (refreshInterval) {
-    clearInterval(refreshInterval);
-    refreshInterval = null;
-  }
-}
-
-function updateBalanceDisplay(balance) {
-  const el = document.getElementById('statRemain');
-  if (el) {
-    el.textContent = balance.toLocaleString() + '원';
-    el.className = 'stat-value';
-    if (balance <= 0) el.classList.add('danger');
-    else if (balance < THRESHOLD_AMOUNT) el.classList.add('warning');
-    else el.classList.add('success');
-  }
-}
+};
 
 // ============================================================
-// 🔧 dc_time에서 분 추출
+// 메인 앱
 // ============================================================
-function extractMinutesFromDcTime(dcTime) {
-  if (!dcTime) return 0;
-  
-  let match = dcTime.match(/\(([\d.]+)\)/);
-  if (match) {
-    return parseFloat(match[1]) || 0;
+export default function App() {
+const { width, height } = useWindowDimensions();
+const isTablet = width >= 768;
+const isLandscape = width > height;
+const scale = Math.min(width / 375, 1.4);
+const tabletScale = isTablet ? Math.min(scale, 1.3) : scale;
+
+  // ===== 상태 =====
+  const [page, setPage] = useState('main');
+  const [vehicleNumber, setVehicleNumber] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [parkingData, setParkingData] = useState(null);
+  const [error, setError] = useState(null);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastTitle, setToastTitle] = useState('주차 등록 완료');
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState('success');
+  const fadeAnim = useState(new Animated.Value(0))[0];
+  const [searchResults, setSearchResults] = useState([]);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  // ===== 인증 관련 상태 =====
+  const [isAppReady, setIsAppReady] = useState(false);
+
+  // ===== 설정 모달 상태 =====
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [isChanging, setIsChanging] = useState(false);
+
+  const blinkAnim = useRef(new Animated.Value(0)).current;
+
+  // ========== styles 정의 ==========
+  const styles = getStyles(width, height, scale, tabletScale, isTablet, isLandscape);
+
+  // ============================================================
+  // ✅ 전체화면 모드 (StatusBar 숨기기)
+  // ============================================================
+  useEffect(() => {
+    StatusBar.setHidden(true);
+  }, []);
+
+  // ============================================================
+  // 🔐 앱 초기화
+  // ============================================================
+  useEffect(() => {
+    const initApp = async () => {
+      try {
+        const storedId = await storage.getItem('login_id');
+        const storedPw = await storage.getItem('login_pw');
+        let id, pw;
+
+        if (!storedId || !storedPw) {
+          id = 'oasis_g';
+          pw = 'wldnjs1234!';
+          await storage.setItem('login_id', id);
+          await storage.setItem('login_pw', pw);
+        } else {
+          id = storedId;
+          pw = storedPw;
+        }
+
+        const result = await performAutoLogin(id, pw);
+        if (result.success) {
+          apiClient.defaults.headers.Cookie = `JSESSIONID=${result.sessionId}`;
+          console.log('✅ 자동 로그인 성공');
+        } else {
+          console.warn('⚠️ 자동 로그인 실패:', result.error);
+          setToastType('error');
+          setToastTitle('⚠️ 로그인 실패');
+          setToastMessage('설정에서 비밀번호를 확인해주세요.');
+          setToastVisible(true);
+        }
+      } catch (error) {
+        console.error('앱 초기화 오류:', error);
+      } finally {
+        setIsAppReady(true);
+      }
+    };
+    initApp();
+  }, []);
+
+  // ============================================================
+  // 🔄 인터셉터 (세션 만료 시 자동 재로그인)
+  // ============================================================
+  useEffect(() => {
+    const interceptor = apiClient.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+        if (
+          (error.response?.status === 403 || error.response?.status === 401) &&
+          !originalRequest._retry
+        ) {
+          originalRequest._retry = true;
+
+          try {
+            const id = await storage.getItem('login_id');
+            const pw = await storage.getItem('login_pw');
+            if (id && pw) {
+              const result = await performAutoLogin(id, pw);
+              if (result.success) {
+                apiClient.defaults.headers.Cookie = `JSESSIONID=${result.sessionId}`;
+                return apiClient(originalRequest);
+              }
+            }
+          } catch (e) {
+            console.error('재로그인 실패:', e);
+          }
+          
+          setToastType('error');
+          setToastTitle('⚠️ 로그인 필요');
+          setToastMessage('설정에서 비밀번호를 갱신해주세요.');
+          setToastVisible(true);
+          return Promise.reject(error);
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      apiClient.interceptors.response.eject(interceptor);
+    };
+  }, []);
+
+  // ========== 토스트 처리 ==========
+  useEffect(() => {
+    if (toastVisible) {
+      Animated.sequence([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.delay(2500),
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setToastVisible(false);
+        if (toastTitle !== '⚠️ 안내') {
+          setParkingData(null);
+          setVehicleNumber('');
+          setPage('main');
+        }
+      });
+    }
+  }, [toastVisible]);
+
+useEffect(() => {
+  if (parkingData) {
+    blinkAnim.setValue(0); 
   }
-  
-  let hours = 0, minutes = 0;
-  const hourMatch = dcTime.match(/(\d+)\s*시간/);
-  const minMatch = dcTime.match(/(\d+)\s*분/);
-  if (hourMatch) hours = parseInt(hourMatch[1]);
-  if (minMatch) minutes = parseInt(minMatch[1]);
-  if (hours > 0 || minutes > 0) {
+}, [parkingData]);
+
+  // 점멸 애니메이션
+useEffect(() => {
+  let animation = null;
+
+  if (parkingData) {
+    animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(blinkAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: false,
+        }),
+        Animated.timing(blinkAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: false,
+        }),
+      ])
+    );
+    animation.start();
+  }
+
+  return () => {
+    if (animation) {
+      animation.stop();
+    }
+  };
+}, [parkingData]);
+
+  const backgroundColor = blinkAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#FFEAA7', '#E35E3A'],
+  });
+
+  // ========== 시간 파싱 ==========
+  const parseParkingTime = (timeStr) => {
+    if (!timeStr) return { hours: 0, minutes: 0 };
+    let hours = 0, minutes = 0, days = 0;
+
+    if (timeStr.includes('일')) {
+      const dayMatch = timeStr.match(/(\d+)일/);
+      if (dayMatch) days = parseInt(dayMatch[1], 10);
+    }
+    if (timeStr.includes('시간')) {
+      const hourMatch = timeStr.match(/(\d+)시간/);
+      if (hourMatch) hours = parseInt(hourMatch[1], 10);
+    }
+    if (timeStr.includes('분')) {
+      const minMatch = timeStr.match(/(\d+)분/);
+      if (minMatch) minutes = parseInt(minMatch[1], 10);
+    }
+    if (timeStr.includes(':')) {
+      const parts = timeStr.split(':');
+      hours = parseInt(parts[0], 10) || 0;
+      minutes = parseInt(parts[1], 10) || 0;
+    }
+    return { hours: hours + days * 24, minutes };
+  };
+
+  const calculateTotalParkingTime = (timeStr) => {
+    const { hours, minutes } = parseParkingTime(timeStr);
     return hours * 60 + minutes;
-  }
-  
-  const onlyHour = dcTime.match(/^(\d+)\s*시간$/);
-  if (onlyHour) {
-    return parseInt(onlyHour[1]) * 60;
-  }
-  
-  const onlyMin = dcTime.match(/^(\d+)\s*분$/);
-  if (onlyMin) {
-    return parseInt(onlyMin[1]) || 0;
-  }
-  
-  const pureNumber = parseFloat(dcTime);
-  if (!isNaN(pureNumber) && pureNumber > 0) {
-    return pureNumber;
-  }
-  
-  if (dcTime.includes('+')) {
-    const parts = dcTime.split('+');
-    let total = 0;
-    for (const part of parts) {
-      total += extractMinutesFromDcTime(part.trim());
-    }
-    return total;
-  }
-  
-  const compactMatch = dcTime.match(/(\d+)시간\s*(\d+)분/);
-  if (compactMatch) {
-    return parseInt(compactMatch[1]) * 60 + parseInt(compactMatch[2]);
-  }
-  
-  console.warn('⚠️ 파싱 실패한 dc_time:', dcTime);
-  return 0;
-}
+  };
 
-// ============================================================
-// 📅 날짜 파싱 헬퍼 함수
-// ============================================================
-function parseDate(dateStr) {
-  if (!dateStr) return new Date(0);
-  return new Date(
-    parseInt(dateStr.substring(0, 4)),
-    parseInt(dateStr.substring(4, 6)) - 1,
-    parseInt(dateStr.substring(6, 8)),
-    parseInt(dateStr.substring(8, 10)) || 0,
-    parseInt(dateStr.substring(10, 12)) || 0,
-    parseInt(dateStr.substring(12, 14)) || 0
+  const calculateFinalParkingTime = (timeStr) => {
+    let totalMinutes = calculateTotalParkingTime(timeStr) + 30;
+    return Math.min(totalMinutes, 600);
+  };
+
+  // ========== 할인 선택 ==========
+  const selectDiscountType = (totalMinutes, discountList) => {
+    if (!discountList || discountList.length === 0) return ['20'];
+    const available = discountList.filter(d => d.id !== '14').sort((a, b) => a.discount_value - b.discount_value);
+    const needComboTimes = [180, 300, 330, 390, 420, 540];
+    if (!needComboTimes.includes(totalMinutes)) {
+      for (const d of available) {
+        if (d.discount_value >= totalMinutes) return [d.id];
+      }
+      return ['16'];
+    }
+    const combinable = available.filter(d => d.id === '20' || d.id === '21');
+    const single = available.filter(d => d.id !== '20' && d.id !== '21');
+    let bestCombo = null;
+    let bestOver = Infinity;
+    for (const d of available) {
+      if (d.discount_value >= totalMinutes && d.discount_value < bestOver) {
+        bestOver = d.discount_value;
+        bestCombo = [d.id];
+      }
+    }
+    const oneHour = combinable.find(d => d.id === '20');
+    const twoHour = combinable.find(d => d.id === '21');
+    if (oneHour) {
+      for (const d of single) {
+        const sum = oneHour.discount_value + d.discount_value;
+        if (sum >= totalMinutes && sum - totalMinutes < bestOver) {
+          bestOver = sum - totalMinutes;
+          bestCombo = ['20', d.id];
+        }
+      }
+    }
+    if (twoHour) {
+      for (const d of single) {
+        const sum = twoHour.discount_value + d.discount_value;
+        if (sum >= totalMinutes && sum - totalMinutes < bestOver) {
+          bestOver = sum - totalMinutes;
+          bestCombo = ['21', d.id];
+        }
+      }
+    }
+    if (oneHour && twoHour && oneHour.discount_value + twoHour.discount_value >= totalMinutes) {
+      const over = oneHour.discount_value + twoHour.discount_value - totalMinutes;
+      if (over < bestOver) {
+        bestOver = over;
+        bestCombo = ['20', '21'];
+      }
+    }
+    return bestCombo || ['20'];
+  };
+
+  // ========== 키패드 ==========
+  const handleNumberPress = (num) => {
+    if (vehicleNumber.length < 10) {
+      setVehicleNumber(vehicleNumber + num);
+    }
+  };
+  const handleDeletePress = () => {
+    setVehicleNumber(vehicleNumber.slice(0, -1));
+  };
+
+  // ========== 차량 검색 ==========
+  const handleSearch = async () => {
+    if (!apiClient.defaults.headers.Cookie) {
+      setToastType('error');
+      setToastTitle('⚠️ 로그인 필요');
+      setToastMessage('설정에서 비밀번호를 확인해주세요.');
+      setToastVisible(true);
+      return;
+    }
+    if (vehicleNumber.length < 2) {
+      setToastType('error');
+      setToastTitle('⚠️ 안내');
+      setToastMessage('차량 번호는 2자리 이상 입력해주세요');
+      setToastVisible(true);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const entryDate =
+        yesterday.getFullYear() +
+        String(yesterday.getMonth() + 1).padStart(2, '0') +
+        String(yesterday.getDate()).padStart(2, '0');
+
+      const listResponse = await apiClient.post('/discount/registration/listForDiscount', {
+        iLotArea: '17574',
+        entryDate,
+        carNo: vehicleNumber,
+      });
+      const data = Array.isArray(listResponse.data) ? listResponse.data : [];
+      if (data.length === 0) {
+        setToastType('error');
+        setToastTitle('⚠️ 안내');
+        setToastMessage('검색 결과가 없습니다\n출차된 차량은 검색되지 않습니다');
+        setToastVisible(true);
+        setLoading(false);
+        return;
+      }
+      if (data.length === 1) {
+        await fetchDetailAndShowResult(data[0].id);
+        return;
+      }
+      setSearchResults(data);
+      setModalVisible(true);
+      setLoading(false);
+    } catch (err) {
+      console.error(err);
+      setError('조회 중 오류가 발생했습니다.');
+      setToastType('error');
+      setToastTitle('❌ 조회 실패');
+      setToastMessage(err.message || '조회 중 오류가 발생했습니다.');
+      setToastVisible(true);
+      setLoading(false);
+    }
+  };
+
+  // ========== 상세 정보 조회 ==========
+  const fetchDetailAndShowResult = async (id) => {
+    setLoading(true);
+    try {
+      const detailResponse = await apiClient.post('/discount/registration/getForDiscount', {
+        id: id,
+        member_id: 'oasis_g',
+      });
+      const detail = detailResponse.data;
+      const discountList = detail.listDiscountType || [];
+      const parkVisitCar = detail.parkVisitCar || [];
+      const existingMinutes = parkVisitCar.reduce((sum, item) => sum + (parseFloat(item.dc_time) || 0), 0);
+      const data = detail.parkEntry;
+      const picturePath = data.acEntrancePicName || '';
+      const pictureUrl = picturePath.startsWith('http') ? picturePath : `${API_URL}/image${picturePath}`;
+      const { hours, minutes } = parseParkingTime(data.different_time);
+      const displayDays = Math.floor(hours / 24);
+      const displayHours = hours % 24;
+      let formattedTime = '';
+      if (displayDays > 0) formattedTime += `${displayDays}일 `;
+      if (displayHours > 0) formattedTime += `${displayHours}시간 `;
+      if (minutes > 0) formattedTime += `${minutes}분`;
+      if (!formattedTime) formattedTime = '0분';
+
+      setParkingData({
+        id: data.iID,
+        carNo: data.acPlate1,
+        differentTime: formattedTime,
+        originalTime: data.different_time,
+        pictureUrl,
+        discountList,
+        existingMinutes,
+        parkVisitCar,
+      });
+      setModalVisible(false);
+      setSearchResults([]);
+      setPage('result');
+    } catch (err) {
+      console.error(err);
+      setToastType('error');
+      setToastTitle('❌ 상세 조회 실패');
+      setToastMessage(err.message || '상세 정보를 불러오지 못했습니다.');
+      setToastVisible(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setPage('main');
+    setParkingData(null);
+    setVehicleNumber('');
+    setError(null);
+  };
+
+  // ========== 등록 ==========
+  const handleRegister = async () => {
+    if (!parkingData) {
+      setToastType('error');
+      setToastTitle('⚠️ 안내');
+      setToastMessage('먼저 차량을 조회해주세요.');
+      setToastVisible(true);
+      return;
+    }
+    const hasOasisRegistration = parkingData.parkVisitCar?.some((item) => {
+      const account = item.account_no || '';
+      const name = item.name || '';
+      return account.includes('oasis') || name.includes('oasis');
+    });
+    if (hasOasisRegistration) {
+      // ✅ 간단하게: 이미 등록된 차량입니다
+      setToastType('error');
+      setToastTitle('⚠️ 안내');
+      setToastMessage('이미 등록된 차량입니다');
+      setToastVisible(true);
+      return;
+    }
+    const totalMinutesWithGrace = calculateFinalParkingTime(parkingData.originalTime);
+    const roundedMinutes = Math.ceil(totalMinutesWithGrace / 30) * 30;
+    const remainingMinutes = roundedMinutes - parkingData.existingMinutes;
+    if (remainingMinutes <= 0) {
+      setToastType('success');
+      setToastTitle('✅ 주차 등록 완료');
+      setToastMessage('30분 내로 출차 해주세요');
+      setToastVisible(true);
+      return;
+    }
+    setLoading(true);
+    try {
+      const discountIds = selectDiscountType(remainingMinutes, parkingData.discountList);
+      if (!discountIds || discountIds.length === 0) {
+        setToastType('error');
+        setToastTitle('❌ 오류');
+        setToastMessage('선택된 할인이 없습니다.');
+        setToastVisible(true);
+        setLoading(false);
+        return;
+      }
+      for (const discountId of discountIds) {
+        const response = await apiClient.post('/discount/registration/save', {
+          peId: parkingData.id,
+          carNo: vehicleNumber,
+          discountType: discountId,
+          saveCnt: '1',
+          memo: '',
+        });
+        if (typeof response.data === 'string') {
+          if (response.data.includes('<!DOCTYPE')) {
+            setToastType('error');
+            setToastTitle('⚠️ 세션 만료');
+            setToastMessage('로그인 세션이 만료되었습니다');
+            setToastVisible(true);
+            return;
+          }
+          continue;
+        }
+        if (response.data === true || response.data === 'true' || (typeof response.data === 'object' && !response.data.errorMsg)) {
+          continue;
+        }
+        setToastType('error');
+        setToastTitle('❌ 등록 실패');
+        setToastMessage(response.data?.errorMsg || '등록에 실패했습니다.');
+        setToastVisible(true);
+        return;
+      }
+
+      // ===== 남은 시간 계산 =====
+      const baseTime = calculateTotalParkingTime(parkingData.originalTime);
+      const maxRegisteredTime = Math.min(baseTime + 30, 600);
+      const remainingTime = maxRegisteredTime - baseTime;
+
+      // 10시간 초과 여부
+      if (baseTime > 600) {
+        const extraMinutes = baseTime - 600;
+        setToastType('error');
+        setToastTitle('⚠️ 10시간 초과!');
+        setToastMessage(`${extraMinutes}분 초과하여 추가요금이 발생합니다`);
+      } else if (remainingTime <= 30 && remainingTime > 0) {
+        setToastType('success');
+        setToastTitle('주차 등록 완료');
+        setToastMessage(`${remainingTime}분 내로 출차 해주세요`);
+      } else {
+        setToastType('success');
+        setToastTitle('주차 등록 완료');
+        setToastMessage('30분 내로 출차 해주세요');
+      }
+      setToastVisible(true);
+    } catch (err) {
+      setToastType('error');
+      setToastTitle('❌ 오류 발생');
+      setToastMessage(err.response?.data?.errorMsg || err.message || '알 수 없는 오류가 발생했습니다.');
+      setToastVisible(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ============================================================
+  // 🔐 설정 관련 함수
+  // ============================================================
+
+  const handleSettingsPress = () => {
+    setPinInput('');
+    setPinModalVisible(true);
+  };
+
+  const handleConfirmPin = () => {
+    if (pinInput === '0705') {
+      setPinModalVisible(false);
+      setPinInput('');
+      setNewPassword('');
+      setPasswordModalVisible(true);
+    } else {
+      Alert.alert('안내', '비밀번호가 올바르지 않습니다.');
+      setPinInput('');
+    }
+  };
+
+  const handleSaveNewPassword = async () => {
+    if (!newPassword || newPassword.length < 4) {
+      Alert.alert('알림', '비밀번호는 4자리 이상 입력해주세요.');
+      return;
+    }
+
+    setIsChanging(true);
+
+    try {
+      const result = await performAutoLogin('oasis_g', newPassword);
+
+      if (result.success) {
+        await storage.setItem('login_id', 'oasis_g');
+        await storage.setItem('login_pw', newPassword);
+        apiClient.defaults.headers.Cookie = `JSESSIONID=${result.sessionId}`;
+        
+        setPasswordModalVisible(false);
+        setToastType('success');
+        setToastTitle('✅ 갱신 완료');
+        setToastMessage('새 비밀번호로 자동 로그인됩니다.');
+        setToastVisible(true);
+      } else {
+        Alert.alert(
+          '인증 실패',
+          `로그인에 실패했습니다.\n\n상세 오류: ${result.error}`
+        );
+      }
+    } catch (error) {
+      Alert.alert('오류', `알 수 없는 오류가 발생했습니다.\n${error.message}`);
+    } finally {
+      setIsChanging(false);
+    }
+  };
+
+  // ============================================================
+  // UI 렌더링
+  // ============================================================
+
+  if (!isAppReady) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3498db" />
+        <Text style={styles.loadingText}>앱 초기화 중...</Text>
+      </View>
+    );
+  }
+
+  const renderMainScreen = () => (
+    <View style={styles.mainContainer} keepScreenOn={Platform.OS === 'android'}>
+      <Text style={styles.title}>클럽디 오아시스 주차등록</Text>
+      <Text style={styles.subtitle}>차량번호 4자리를 입력하세요</Text>
+
+      <View style={styles.numberDisplay}>
+        {Array.from({ length: 4 }, (_, i) => (
+          <View key={i} style={styles.numberBox}>
+            <Text style={styles.numberText}>{vehicleNumber[i] || ''}</Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.keypad}>
+        {[
+          ['1', '2', '3'],
+          ['4', '5', '6'],
+          ['7', '8', '9'],
+          ['←', '0', '확인'],
+        ].map((row, i) => (
+          <View key={i} style={styles.keyRow}>
+            {row.map((item) => {
+              let btnStyle = styles.keyNumber;
+              let textStyle = styles.keyText;
+              if (item === '←') {
+                btnStyle = styles.keyDelete;
+                textStyle = [styles.keyText, styles.keyTextWhite];
+              } else if (item === '확인') {
+                btnStyle = styles.keyConfirm;
+                textStyle = [styles.keyText, styles.keyTextWhite];
+              }
+              return (
+                <TouchableOpacity
+                  key={item}
+                  style={[styles.keyButton, btnStyle]}
+                  onPress={() => {
+                    if (item === '←') handleDeletePress();
+                    else if (item === '확인') handleSearch();
+                    else handleNumberPress(item);
+                  }}
+                  disabled={loading}
+                >
+                  <Text style={textStyle}>{item}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ))}
+      </View>
+
+      {error && <Text style={styles.errorText}>{error}</Text>}
+
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color="#3498db" />
+            <Text style={styles.loadingText}>조회중...</Text>
+          </View>
+        </View>
+      )}
+
+      <TouchableOpacity
+        style={[styles.floatingSettingsButton, isTablet && styles.floatingSettingsButtonTablet]}
+        onPress={handleSettingsPress}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.settingsIcon}>⚙️</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderResultScreen = () => (
+    <View style={styles.resultContainer} keepScreenOn={Platform.OS === 'android'}>
+      <ScrollView contentContainerStyle={styles.resultContent}>
+        {parkingData && (
+          <>
+            <View style={styles.card}>
+              {parkingData.pictureUrl ? (
+                <Image source={{ uri: parkingData.pictureUrl }} style={styles.image} />
+              ) : (
+                <View style={styles.noImage}><Text>사진 없음</Text></View>
+              )}
+              <View style={styles.infoBox}>
+                <View style={styles.infoRow}>
+                  <Text style={styles.label}>차량 번호</Text>
+                  <Text style={styles.value}>{parkingData.carNo}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.label}>주차 시간</Text>
+                  <Text style={styles.value}>{parkingData.differentTime}</Text>
+                </View>
+              </View>
+            </View>
+
+            <Animated.View 
+            key={parkingData?.id}
+            style={[styles.noticeBox, { backgroundColor }]}>
+              <Text style={styles.noticeText}>등록 시간부터 30분 이내 출차 시 무료</Text>
+              <Text style={styles.noticeText}>30분 초과 시 10분당 800원</Text>
+            </Animated.View>
+
+            <View style={styles.buttonGroup}>
+              <TouchableOpacity style={[styles.actionButton, styles.cancelButton]} onPress={handleCancel}>
+                <Text style={styles.actionButtonText}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.actionButton, styles.registerButton]} onPress={handleRegister} disabled={loading}>
+                <Text style={styles.actionButtonText}>등록</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+        {loading && (
+          <View style={styles.loadingOverlay}>
+            <View style={styles.loadingBox}>
+              <ActivityIndicator size="large" color="#3498db" />
+              <Text style={styles.loadingText}>등록중...</Text>
+            </View>
+          </View>
+        )}
+      </ScrollView>
+    </View>
+  );
+
+ return (
+  <View style={styles.container} keepScreenOn={Platform.OS === 'android'}>
+    <StatusBar hidden={true} translucent={true} backgroundColor="transparent" />
+    {page === 'main' ? renderMainScreen() : renderResultScreen()}
+ 
+      {/* 차량 검색 결과 모달 */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>차량을 선택해주세요</Text>
+            <FlatList
+              data={searchResults}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.modalItem}
+                  onPress={() => fetchDetailAndShowResult(item.id)}
+                >
+                  <Text style={styles.modalItemText}>{item.carNo}</Text>
+                  <Text style={styles.modalItemSub}>입차시간: {item.entryDateToString}</Text>
+                </TouchableOpacity>
+              )}
+              ItemSeparatorComponent={() => <View style={styles.modalSeparator} />}
+            />
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => {
+                setModalVisible(false);
+                setSearchResults([]);
+              }}
+            >
+              <Text style={styles.modalCloseText}>취소</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* PIN 인증 모달 */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={pinModalVisible}
+        onRequestClose={() => setPinModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, isTablet && styles.modalContainerTablet]}>
+            <Text style={styles.modalTitle}>🔐 관리자 인증{'\n'}</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="비밀번호를 입력하세요"
+              placeholderTextColor="#999"
+              secureTextEntry={true}
+              keyboardType="numeric"
+              value={pinInput}
+              onChangeText={setPinInput}
+              autoFocus={true}
+              maxLength={10}
+            />
+
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={() => {
+                  setPinModalVisible(false);
+                  setPinInput('');
+                }}
+              >
+                <Text style={styles.modalButtonText}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalSaveButton]}
+                onPress={handleConfirmPin}
+              >
+                <Text style={[styles.modalButtonText, { color: '#ffffff' }]}>확인</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 비밀번호 변경 모달 */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={passwordModalVisible}
+        onRequestClose={() => setPasswordModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, isTablet && styles.modalContainerTablet]}>
+            <Text style={styles.modalTitle}>🔑 계정 비밀번호 변경</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="변경된 비밀번호를 입력하세요"
+              placeholderTextColor="#999"
+              secureTextEntry={true}
+              value={newPassword}
+              onChangeText={setNewPassword}
+              autoFocus={true}
+              editable={!isChanging}
+            />
+
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={() => setPasswordModalVisible(false)}
+                disabled={isChanging}
+              >
+                <Text style={styles.modalButtonText}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalSaveButton]}
+                onPress={handleSaveNewPassword}
+                disabled={isChanging}
+              >
+                {isChanging ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={[styles.modalButtonText, { color: '#ffffff' }]}>저장</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 토스트 */}
+      {toastVisible && (
+        <Animated.View style={[styles.toastContainer, { opacity: fadeAnim }]}>
+          <View style={[styles.toastContent, toastType === 'error' && styles.toastContentError]}>
+            <Text style={[styles.toastTitle, toastType === 'error' && styles.toastTitleError]}>
+              {toastTitle}
+            </Text>
+            <Text style={[styles.toastMessage, toastType === 'error' && styles.toastMessageError]}>
+              {toastMessage}
+            </Text>
+          </View>
+        </Animated.View>
+      )}
+    </View>
   );
 }
 
 // ============================================================
-// ✅ KV 데이터 불러오기
+// 스타일
 // ============================================================
-async function loadCompletedCars() {
-  try {
-    const response = await fetch(`${PROXY_BASE}/kv`);
-    const result = await response.json();
-    return result.data || [];
-  } catch (e) {
-    console.warn('⚠️ KV 로드 실패:', e);
-    return [];
-  }
-}
+const getStyles = (width, height, scale, tabletScale, isTablet, isLandscape) => {
+  const baseFont = isTablet ? 20 : 16;
+  const bigFont = isTablet ? 30 : 24;
+  const hugeFont = isTablet ? 36 : 28;
+  const maxWidth = isTablet ? Math.min(width * 0.8, 600) : 400;
 
-async function saveCompletedCars(data) {
-  try {
-    await fetch(`${PROXY_BASE}/kv`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data })
-    });
-  } catch (e) {
-    console.warn('⚠️ KV 저장 실패:', e);
-  }
-}
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#f5f6fa' },
 
-async function saveAllParkingTimes(data) {
-  try {
-    await fetch(`${PROXY_BASE}/kv/parking/all`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data })
-    });
-  } catch (e) {
-    console.warn('⚠️ 주차시간 일괄 저장 실패:', e);
-  }
-}
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#f5f6fa',
+    },
+    loadingBox: {
+      backgroundColor: 'white',
+      paddingHorizontal: 30 * tabletScale,
+      paddingVertical: 25 * tabletScale,
+      borderRadius: 15 * tabletScale,
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOpacity: 0.2,
+      shadowRadius: 10,
+      elevation: 10,
+    },
+    loadingText: {
+      marginTop: 12,
+      fontSize: 16,
+      color: '#2c3e50',
+    },
 
-async function loadAllParkingTimes() {
-  try {
-    const response = await fetch(`${PROXY_BASE}/kv/parking/all`);
-    const result = await response.json();
-    return result.data || {};
-  } catch (e) {
-    console.warn('⚠️ 주차시간 일괄 로드 실패:', e);
-    return {};
-  }
-}
+    mainContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: isLandscape ? 40 * tabletScale : 20 * tabletScale,
+    },
+    title: {
+      fontSize: hugeFont,
+      fontWeight: 'bold',
+      color: '#2c3e50',
+      marginBottom: 8 * tabletScale,
+      textAlign: 'center',
+    },
+    subtitle: {
+      fontSize: baseFont,
+      color: '#7f8c8d',
+      marginBottom: 30 * tabletScale,
+      textAlign: 'center',
+    },
+    numberDisplay: {
+      flexDirection: 'row',
+      marginBottom: 30 * tabletScale,
+      alignSelf: 'center',
+    },
+    numberBox: {
+      width: 60 * tabletScale,
+      height: 70 * tabletScale,
+      borderWidth: 2,
+      borderColor: '#3498db',
+      borderRadius: 10 * tabletScale,
+      marginHorizontal: 5 * tabletScale,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'white',
+    },
+    numberText: {
+      fontSize: 30 * tabletScale,
+      fontWeight: 'bold',
+      color: '#2c3e50',
+    },
+    keypad: {
+      width: '80%',
+      maxWidth: 320 * tabletScale,
+      alignSelf: 'center',
+    },
+    keyRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 8 * tabletScale,
+    },
+    keyButton: {
+      flex: 1,
+      aspectRatio: 1.2,
+      marginHorizontal: 4 * tabletScale,
+      borderRadius: 10 * tabletScale,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOpacity: 0.1,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    keyNumber: { backgroundColor: 'white' },
+    keyDelete: { backgroundColor: '#e74c3c' },
+    keyConfirm: { backgroundColor: '#3498db' },
+    keyText: {
+      fontSize: 24 * tabletScale,
+      fontWeight: '500',
+      color: '#2c3e50',
+    },
+    keyTextWhite: { color: 'white' },
+    errorText: {
+      color: 'red',
+      fontSize: 14 * tabletScale,
+      backgroundColor: '#fde0e0',
+      padding: 10 * tabletScale,
+      borderRadius: 8 * tabletScale,
+      width: '100%',
+      textAlign: 'center',
+      marginTop: 10 * tabletScale,
+    },
+    loadingOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'rgba(255,255,255,0.5)',
+      zIndex: 999,
+    },
 
-// ============================================================
-// 📊 데이터 가져오기
-// ============================================================
-async function fetchData() {
-  try {
-    await refreshBalance(false);
-    
-    const today = new Date();
-    const dateStr = today.getFullYear() +
-      String(today.getMonth() + 1).padStart(2, '0') +
-      String(today.getDate()).padStart(2, '0');
+    resultContainer: { flex: 1, backgroundColor: '#f5f6fa' },
+    resultContent: {
+      padding: 12 * tabletScale,
+      alignItems: 'center',
+      flexGrow: 1,
+      justifyContent: 'center',
+    },
+    card: {
+      backgroundColor: 'white',
+      width: '100%',
+      maxWidth: maxWidth,
+      borderRadius: 15 * tabletScale,
+      padding: 14 * tabletScale,
+      marginTop: 0,
+      shadowColor: '#000',
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
+      alignItems: 'center',
+      alignSelf: 'center',
+    },
+    image: {
+      width: '100%',
+      height: 200 * tabletScale,
+      borderRadius: 10 * tabletScale,
+      marginBottom: 16 * tabletScale,
+      resizeMode: 'cover',
+    },
+    noImage: {
+      width: '100%',
+      height: 200 * tabletScale,
+      backgroundColor: '#ecf0f1',
+      borderRadius: 10 * tabletScale,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 16 * tabletScale,
+    },
+    infoBox: {
+      width: '100%',
+      paddingVertical: 4 * tabletScale,
+    },
+    infoRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 4 * tabletScale,
+      borderBottomWidth: 1,
+      borderBottomColor: '#f0f0f0',
+    },
+    label: {
+      fontSize: baseFont,
+      color: '#7f8c8d',
+      fontWeight: '500',
+    },
+    value: {
+      fontSize: bigFont,
+      fontWeight: '600',
+      color: '#2c3e50',
+    },
+    noticeBox: {
+      borderWidth: 2,
+      borderColor: '#ffc107',
+      borderRadius: 10 * tabletScale,
+      paddingVertical: 8 * tabletScale,
+      paddingHorizontal: 12 * tabletScale,
+      marginTop: 4 * tabletScale,
+      alignItems: 'center',
+      width: '100%',
+      maxWidth: maxWidth,
+      alignSelf: 'center',
+    },
+    noticeText: {
+      fontSize: isTablet ? 26 : 22,
+      fontWeight: '700',
+      color: '#000000',
+      textAlign: 'center',
+      lineHeight: isTablet ? 44 : 40,
+    },
+    buttonGroup: {
+      flexDirection: 'row',
+      width: '100%',
+      maxWidth: maxWidth,
+      justifyContent: 'space-between',
+      marginTop: 6 * tabletScale,
+      marginBottom: 0,
+      alignSelf: 'center',
+      gap: 8 * tabletScale,
+    },
+    actionButton: {
+      flex: 1,
+      paddingVertical: 20 * tabletScale,
+      borderRadius: 10 * tabletScale,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cancelButton: { backgroundColor: '#e74c3c' },
+    registerButton: { backgroundColor: '#27ae60' },
+    actionButtonText: {
+      color: 'white',
+      fontSize: isTablet ? 24 : 20,
+      fontWeight: 'bold',
+      textAlign: 'center',
+    },
 
-    const headers = { 
-      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      'X-Requested-With': 'XMLHttpRequest'
-    };
-    if (sessionId) headers['Cookie'] = `JSESSIONID=${sessionId}`;
+    floatingSettingsButton: {
+      position: 'absolute',
+      bottom: 10,
+      right: 10,
+      width: 40,
+      height: 40,
+      borderRadius: 28,
+      backgroundColor: '',
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 5,
+      zIndex: 999,
+    },
+    floatingSettingsButtonTablet: {
+      width: 40,
+      height: 40,
+      borderRadius: 36,
+      bottom: 40,
+      right: 40,
+    },
+    settingsIcon: {
+      fontSize: isTablet ? 36 : 28,
+      color: '#ffffff',
+    },
 
-    const response = await fetch(`${PROXY_BASE}/state/doListMst`, {
-      method: 'POST',
-      headers: headers,
-      credentials: 'include',
-      body: new URLSearchParams({
-        startDate: dateStr,
-        endDate: dateStr,
-        account_no: '',
-        rowcount: '50000'
-      })
-    });
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContainer: {
+      backgroundColor: 'white',
+      borderRadius: 16,
+      padding: 24,
+      width: '80%',
+      maxWidth: 360,
+      maxHeight: '70%',
+      shadowColor: '#000',
+      shadowOpacity: 0.25,
+      shadowRadius: 10,
+      elevation: 10,
+    },
+    modalContainerTablet: {
+      maxWidth: 400,
+      padding: 32,
+    },
+    modalTitle: {
+      fontSize: isTablet ? 26 : 20,
+      fontWeight: 'bold',
+      color: '#2c3e50',
+      textAlign: 'center',
+      marginBottom: 8,
+    },
+    modalDescription: {
+      fontSize: 16,
+      color: '#7f8c8d',
+      marginBottom: 20,
+      textAlign: 'center',
+      lineHeight: 24,
+    },
+    modalInput: {
+      borderWidth: 1,
+      borderColor: '#ddd',
+      borderRadius: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      fontSize: 18,
+      marginBottom: 24,
+      backgroundColor: '#f8f9fa',
+    },
+    modalButtonRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    modalButton: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalCancelButton: {
+      backgroundColor: '#ecf0f1',
+    },
+    modalSaveButton: {
+      backgroundColor: '#3498db',
+    },
+    modalButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#2c3e50',
+    },
 
-    if (response.status === 403 || response.status === 401) {
-      handleLogout();
-      return;
-    }
+    modalItem: {
+      paddingVertical: 14,
+      paddingHorizontal: 12,
+    },
+    modalItemText: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: '#2c3e50',
+    },
+    modalItemSub: {
+      fontSize: 14,
+      color: '#7f8c8d',
+      marginTop: 2,
+    },
+    modalSeparator: {
+      height: 1,
+      backgroundColor: '#ecf0f1',
+    },
+    modalCloseButton: {
+      marginTop: 16,
+      paddingVertical: 12,
+      borderRadius: 10,
+      backgroundColor: '#e74c3c',
+      alignItems: 'center',
+    },
+    modalCloseText: {
+      color: 'white',
+      fontSize: 16,
+      fontWeight: 'bold',
+    },
 
-    const result = await response.json();
-    const rawData = result.data || [];
-    
-    const carMap = new Map();
-    for (const row of rawData) {
-      const carNo = row.carno;
-      if (!carNo) continue;
-      
-      if (!carMap.has(carNo)) {
-        carMap.set(carNo, {
-          carNo,
-          totalDiscountTime: 0,
-          regDate: row.reg_date || '',
-          entryDate: row.entry_date || '',
-          discountDetails: [],
-          hasOasis: false,
-          paidStat: row.paid_stat || '00',
-          isNew: false
-        });
-      }
-      const car = carMap.get(carNo);
-      
-      const minutes = extractMinutesFromDcTime(row.dc_time);
-      car.totalDiscountTime += minutes;
-      
-      car.discountDetails.push({
-        discountName: row.discount_name || '',
-        discountTime: row.dc_time || '',
-        minutes: minutes,
-        registrant: row.account_no || '',
-        registrantName: row.name || '',
-        regDate: row.reg_date || '',
-        paidStat: row.paid_stat || '00'
-      });
-      
-      if (row.account_no === 'oasis_g') {
-        car.hasOasis = true;
-      }
-      
-      if (row.reg_date) car.regDate = row.reg_date;
-      if (row.entry_date) car.entryDate = row.entry_date;
-      if (row.paid_stat) car.paidStat = row.paid_stat;
-    }
-
-    const filteredCars = [];
-    for (const [carNo, car] of carMap) {
-      if (car.hasOasis) {
-        filteredCars.push(car);
-      }
-    }
-
-    const currentCarNos = new Set(filteredCars.map(car => car.carNo));
-    
-    let completedCars = await loadCompletedCars();
-    const validCompleted = completedCars.filter(car => !currentCarNos.has(car.carNo));
-    completedCars = validCompleted;
-
-    const savedParkingTimes = await loadAllParkingTimes();
-
-    const currentParkingTimes = {};
-    const detailedCars = [];
-    const now = new Date();
-    let hasChanges = false;
-    
-    for (const car of filteredCars) {
-      let parkingMinutes = 0;
-      let remainTime = 0;
-      let statusText = '미출차';
-      let statusClass = 'status-pending';
-      
-      if (car.paidStat !== '10') {
-        if (car.entryDate) {
-          const entry = parseDate(car.entryDate);
-          parkingMinutes = Math.floor((now - entry) / 60000);
-          currentParkingTimes[car.carNo] = parkingMinutes;
-        }
-        remainTime = Math.max(0, car.totalDiscountTime - parkingMinutes);
-        if (remainTime <= 0) {
-          statusText = '미출차 (초과)';
-          statusClass = 'status-overdue';
-        }
-      } else {
-        parkingMinutes = savedParkingTimes[car.carNo] || 0;
-        remainTime = 0;
-        statusText = '출차완료';
-        statusClass = 'status-complete';
-        
-        const exists = completedCars.some(c => c.carNo === car.carNo);
-        if (!exists) {
-          completedCars.push({
-            carNo: car.carNo,
-            parkingMinutes: parkingMinutes,
-            exitTime: new Date().toISOString(),
-            totalDiscountTime: car.totalDiscountTime,
-            discountDetails: car.discountDetails
-          });
-          hasChanges = true;
-        }
-      }
-      
-      detailedCars.push({
-        ...car,
-        parkingMinutes: parkingMinutes,
-        remainTime: remainTime,
-        statusText: statusText,
-        statusClass: statusClass,
-        totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
-        discountDetails: car.discountDetails
-      });
-    }
-
-    if (Object.keys(currentParkingTimes).length > 0) {
-      await saveAllParkingTimes(currentParkingTimes);
-    }
-
-    if (hasChanges) {
-      await saveCompletedCars(completedCars);
-    }
-
-    for (const completed of completedCars) {
-      if (!detailedCars.some(c => c.carNo === completed.carNo && c.paidStat === '10')) {
-        const isFiltered = filteredCars.some(c => c.carNo === completed.carNo);
-        if (isFiltered) {
-          detailedCars.push({
-            carNo: completed.carNo,
-            totalDiscountTime: completed.totalDiscountTime || 0,
-            regDate: '-',
-            entryDate: '-',
-            discountDetails: completed.discountDetails || [],
-            hasOasis: true,
-            paidStat: '10',
-            isNew: false,
-            parkingMinutes: completed.parkingMinutes || 0,
-            remainTime: 0,
-            statusText: '출차완료',
-            statusClass: 'status-complete',
-            totalDiscountTimeDisplay: formatTime(completed.totalDiscountTime || 0)
-          });
-        }
-      }
-    }
-
-    allCarsData = detailedCars;
-
-    detailedCars.sort((a, b) => {
-      if (a.paidStat === '10' && b.paidStat !== '10') return 1;
-      if (a.paidStat !== '10' && b.paidStat === '10') return -1;
-      if (a.regDate > b.regDate) return -1;
-      if (a.regDate < b.regDate) return 1;
-      return 0;
-    });
-    
-    renderData(detailedCars);
-  } catch (error) {
-    console.error('데이터 로드 실패:', error);
-    document.getElementById('tableBody').innerHTML = 
-      '<tr><td colspan="7" style="text-align:center;padding:40px;color:#ef4444;">⚠️ 데이터를 불러오지 못했습니다.</td></tr>';
-  }
-}
-
-// ============================================================
-// 📋 할인내역 상세 모달
-// ============================================================
-function showDiscountDetails(carNo) {
-  const car = allCarsData.find(c => c.carNo === carNo);
-  if (!car || !car.discountDetails || car.discountDetails.length === 0) {
-    showToast('알림', '할인내역이 없습니다.', 'warning');
-    return;
-  }
-
-  document.getElementById('detailModalTitle').textContent = `🚗 ${carNo} 할인내역`;
-  
-  let html = '<table>';
-  html += `<tr><th>할인명</th><th>등록자</th><th>등록시간</th><th>상태</th></tr>`;
-  
-  for (const detail of car.discountDetails) {
-    const status = detail.paidStat === '10' ? '출차완료' : '미출차';
-    const registrant = detail.registrantName || detail.registrant || '-';
-    html += `<tr>
-      <td>${detail.discountName || '-'}</td>
-      <td>${registrant}</td>
-      <td>${fncDatetimeFormat(detail.regDate)}</td>
-      <td>${status}</td>
-    </tr>`;
-  }
-  html += '</table>';
-  
-  html += `<div class="detail-total-time">💰 총 할인시간: ${formatTime(car.totalDiscountTime)}</div>`;
-  
-  document.getElementById('detailModalBody').innerHTML = html;
-  document.getElementById('detailModal').classList.add('show');
-}
-
-function closeDetailModal() {
-  document.getElementById('detailModal').classList.remove('show');
-}
-
-// ============================================================
-// 🖥️ 렌더링
-// ============================================================
-function renderData(data) {
-  document.getElementById('statTotal').textContent = data.length;
-  document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
-
-  const tbody = document.getElementById('tableBody');
-  tbody.innerHTML = '';
-  if (!data || data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8;">📭 등록 내역이 없습니다.</td></tr>';
-    return;
-  }
-
-  data.forEach((row, idx) => {
-    const tr = document.createElement('tr');
-    let remainClass = '';
-    if (row.paidStat === '10') remainClass = '';
-    else if (row.remainTime <= 0) remainClass = 'highlight-red';
-    else if (row.remainTime <= 30) remainClass = 'highlight-orange';
-    else remainClass = 'highlight-green';
-    
-    const parkingDisplay = formatTime(row.parkingMinutes);
-    const remainDisplay = formatTime(row.remainTime);
-    const regDateDisplay = row.regDate ? fncDatetimeFormat(row.regDate) : '-';
-    
-    const hasDetails = row.discountDetails && row.discountDetails.length > 0;
-    const totalTimeDisplay = row.totalDiscountTime > 0 ? formatTime(row.totalDiscountTime) : '0분';
-    const discountDisplay = hasDetails 
-      ? `<span class="discount-detail-btn" onclick="showDiscountDetails('${row.carNo}')">${totalTimeDisplay} ▼</span>`
-      : (row.totalDiscountTime > 0 ? totalTimeDisplay : '-');
-
-    tr.innerHTML = `
-      <td>${idx + 1}</td>
-      <td><strong>${row.carNo}</strong></td>
-      <td>${regDateDisplay}</td>
-      <td>${parkingDisplay}</td>
-      <td>${discountDisplay}</td>
-      <td class="${remainClass}">${remainDisplay}</td>
-      <td><span class="${row.statusClass}">${row.statusText}</span></td>
-    `;
-
-    if (row.isNew) {
-      tr.classList.add('row-new');
-      setTimeout(() => {
-        tr.classList.remove('row-new');
-      }, 3000);
-    }
-
-    tbody.appendChild(tr);
+    toastContainer: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'rgba(0,0,0,0.4)',
+    },
+    toastContent: {
+      backgroundColor: 'white',
+      paddingHorizontal: 30 * tabletScale,
+      paddingVertical: 25 * tabletScale,
+      borderRadius: 15 * tabletScale,
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOpacity: 0.3,
+      shadowRadius: 10,
+      elevation: 10,
+    },
+    toastContentError: {
+      backgroundColor: '#fff5f5',
+      borderWidth: 2,
+      borderColor: '#e74c3c',
+    },
+    toastTitle: {
+      fontSize: isTablet ? 28 : 22,
+      fontWeight: 'bold',
+      color: '#27ae60',
+      marginBottom: 8 * tabletScale,
+      textAlign: 'center',
+    },
+    toastTitleError: { color: '#e74c3c' },
+    toastMessage: {
+      fontSize: isTablet ? 20 : 16,
+      color: '#2c3e50',
+      textAlign: 'center',
+    },
+    toastMessageError: {
+      color: '#c0392b',
+      fontSize: isTablet ? 22 : 18,
+      fontWeight: '600',
+    },
   });
-}
-
-// ============================================================
-// 🔧 유틸
-// ============================================================
-function formatTime(minutes) {
-  if (minutes <= 0) return '0분';
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  let result = '';
-  if (hours > 0) result += hours + '시간 ';
-  if (mins > 0) result += mins + '분';
-  return result.trim() || '0분';
-}
-
-function fncDatetimeFormat(dateStr) {
-  if (!dateStr) return '-';
-  const date = dateStr.substring(0, 8);
-  const time = dateStr.substring(8, 14);
-  return date.substring(0,4) + '-' + date.substring(4,6) + '-' + date.substring(6,8) + ' ' +
-         time.substring(0,2) + ':' + time.substring(2,4) + ':' + time.substring(4,6);
-}
-
-function sha256(message) {
-  function rightRotate(value, amount) { return (value >>> amount) | (value << (32 - amount)); }
-  const msgBytes = new TextEncoder().encode(message);
-  const msgLen = msgBytes.length;
-  const bitLen = msgLen * 8;
-  const paddingLen = 64 - ((msgLen + 8) % 64);
-  const totalLen = msgLen + paddingLen + 8;
-  const bytes = new Uint8Array(totalLen);
-  bytes.set(msgBytes, 0);
-  bytes[msgLen] = 0x80;
-  const view = new DataView(bytes.buffer);
-  view.setUint32(totalLen - 4, bitLen, false);
-  const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
-  let h0=0x6a09e667,h1=0xbb67ae85,h2=0x3c6ef372,h3=0xa54ff53a,h4=0x510e527f,h5=0x9b05688c,h6=0x1f83d9ab,h7=0x5be0cd19;
-  for (let i=0;i<bytes.length;i+=64) {
-    const w=new Uint32Array(64);
-    for (let j=0;j<16;j++) w[j]=(bytes[i+j*4]<<24)|(bytes[i+j*4+1]<<16)|(bytes[i+j*4+2]<<8)|bytes[i+j*4+3];
-    for (let j=16;j<64;j++) {
-      const s0=rightRotate(w[j-15],7)^rightRotate(w[j-15],18)^(w[j-15]>>>3);
-      const s1=rightRotate(w[j-2],17)^rightRotate(w[j-2],19)^(w[j-2]>>>10);
-      w[j]=(w[j-16]+s0+w[j-7]+s1)|0;
-    }
-    let a=h0,b=h1,c=h2,d=h3,e=h4,f=h5,g=h6,h=h7;
-    for (let j=0;j<64;j++) {
-      const S1=rightRotate(e,6)^rightRotate(e,11)^rightRotate(e,25);
-      const ch=(e&f)^(~e&g);
-      const temp1=(h+S1+ch+K[j]+w[j])|0;
-      const S0=rightRotate(a,2)^rightRotate(a,13)^rightRotate(a,22);
-      const maj=(a&b)^(a&c)^(b&c);
-      const temp2=(S0+maj)|0;
-      h=g;g=f;f=e;e=(d+temp1)|0;d=c;c=b;b=a;a=(temp1+temp2)|0;
-    }
-    h0=(h0+a)|0;h1=(h1+b)|0;h2=(h2+c)|0;h3=(h3+d)|0;h4=(h4+e)|0;h5=(h5+f)|0;h6=(h6+g)|0;h7=(h7+h)|0;
-  }
-  function toHex(num){return ('00000000'+(num>>>0).toString(16)).slice(-8);}
-  return toHex(h0)+toHex(h1)+toHex(h2)+toHex(h3)+toHex(h4)+toHex(h5)+toHex(h6)+toHex(h7);
-}
-
-// ============================================================
-// ✅ 초기화
-// ============================================================
-document.addEventListener('DOMContentLoaded', function() {
-  // ✅ 저장된 로그인 정보 자동 채우기
-  loadSavedCredentials();
-  
-  // ✅ Enter 키로 로그인
-  document.getElementById('loginPw').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-      handleLogin();
-    }
-  });
-  document.getElementById('loginId').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-      document.getElementById('loginPw').focus();
-    }
-  });
-});
-
-// ============================================================
-// ✅ window에 함수 노출
-// ============================================================
-window.handleLogin = handleLogin;
-window.handleLogout = handleLogout;
-window.openThresholdModal = openThresholdModal;
-window.closeThresholdModal = closeThresholdModal;
-window.saveThreshold = saveThreshold;
-window.showDiscountDetails = showDiscountDetails;
-window.closeDetailModal = closeDetailModal;
-window.refreshBalance = refreshBalance;
-window.fetchData = fetchData;
-</script>
-
-</body>
-</html>
+};
