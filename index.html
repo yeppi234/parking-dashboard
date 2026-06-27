@@ -69,6 +69,27 @@
       margin-bottom: 12px;
       display: none;
     }
+    .login-success {
+      color: #16a34a;
+      font-size: 14px;
+      text-align: center;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .remember-me {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      color: #666;
+    }
+    .remember-me input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      cursor: pointer;
+    }
 
     .loading-overlay {
       position: fixed;
@@ -426,6 +447,20 @@
       text-align: center;
       font-weight: 600;
     }
+
+    .login-options {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .find-account {
+      font-size: 13px;
+      color: #3b82f6;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .find-account:hover { color: #2563eb; }
   </style>
 </head>
 <body>
@@ -436,8 +471,20 @@
     <h2>🔐 로그인</h2>
     <p>할인등록 현황을 보려면 로그인해주세요.</p>
     <div class="login-error" id="loginError">❌ 아이디 또는 비밀번호가 올바르지 않습니다.</div>
-    <input type="text" id="loginId" placeholder="아이디" value="oasis_g">
-    <input type="password" id="loginPw" placeholder="비밀번호" value="wldnjs1234!">
+    <div class="login-success" id="loginSuccess">✅ 로그인 성공! 잠시 후 대시보드로 이동합니다.</div>
+    
+    <!-- 🔥 수정: 하드코딩 제거 -->
+    <input type="text" id="loginId" placeholder="아이디를 입력하세요">
+    <input type="password" id="loginPw" placeholder="비밀번호를 입력하세요">
+    
+    <div class="login-options">
+      <div class="remember-me">
+        <input type="checkbox" id="rememberMe" checked>
+        <label for="rememberMe">로그인 정보 저장</label>
+      </div>
+      <span class="find-account" onclick="alert('관리자에게 문의해주세요.')">계정 찾기</span>
+    </div>
+    
     <button id="loginBtn" onclick="handleLogin()">로그인</button>
   </div>
 </div>
@@ -540,15 +587,60 @@ const PROXY_BASE = 'https://oasis-parking.vercel.app/api/proxy';
 // ============================================================
 const STORAGE_KEY = 'threshold_amount';
 const BALANCE_KEY = 'last_balance';
+const CREDENTIALS_KEY = 'saved_credentials';
 let THRESHOLD_AMOUNT = parseInt(localStorage.getItem(STORAGE_KEY)) || 10000;
 let sessionId = '';
 let lastToastShown = {};
 let currentBalance = 0;
 let prevCarNos = new Set();
 let allCarsData = [];
+let refreshInterval = null;
 
 // ============================================================
-// 🍞 토스트 알림 (자동 닫힘)
+// 💾 저장된 로그인 정보 불러오기
+// ============================================================
+function loadSavedCredentials() {
+  try {
+    const saved = localStorage.getItem(CREDENTIALS_KEY);
+    if (saved) {
+      const data = JSON.parse(saved);
+      if (data.id && data.pw) {
+        document.getElementById('loginId').value = data.id;
+        document.getElementById('loginPw').value = data.pw;
+        document.getElementById('rememberMe').checked = true;
+        return true;
+      }
+    }
+  } catch (e) {
+    console.warn('⚠️ 저장된 정보 로드 실패:', e);
+  }
+  return false;
+}
+
+// ============================================================
+// 💾 로그인 정보 저장
+// ============================================================
+function saveCredentials(id, pw) {
+  try {
+    localStorage.setItem(CREDENTIALS_KEY, JSON.stringify({ id, pw }));
+  } catch (e) {
+    console.warn('⚠️ 정보 저장 실패:', e);
+  }
+}
+
+// ============================================================
+// 💾 로그인 정보 삭제
+// ============================================================
+function clearCredentials() {
+  try {
+    localStorage.removeItem(CREDENTIALS_KEY);
+  } catch (e) {
+    console.warn('⚠️ 정보 삭제 실패:', e);
+  }
+}
+
+// ============================================================
+// 🍞 토스트 알림
 // ============================================================
 function showToast(title, message, type = 'warning') {
   const container = document.getElementById('toastContainer');
@@ -586,23 +678,36 @@ function saveThreshold() {
 }
 
 // ============================================================
-// 🔐 로그인
+// 🔐 로그인 (하드코딩 제거)
 // ============================================================
 async function handleLogin() {
-  const id = document.getElementById('loginId').value;
-  const pw = document.getElementById('loginPw').value;
+  const id = document.getElementById('loginId').value.trim();
+  const pw = document.getElementById('loginPw').value.trim();
+  const rememberMe = document.getElementById('rememberMe').checked;
   const errorEl = document.getElementById('loginError');
+  const successEl = document.getElementById('loginSuccess');
   const loginBtn = document.getElementById('loginBtn');
 
+  // ✅ 입력값 검증
   if (!id || !pw) {
-    errorEl.textContent = '❌ 아이디와 비밀번호를 입력해주세요.';
+    errorEl.textContent = '❌ 아이디와 비밀번호를 모두 입력해주세요.';
     errorEl.style.display = 'block';
+    successEl.style.display = 'none';
+    return;
+  }
+
+  // ✅ 최소 길이 검증
+  if (id.length < 2 || pw.length < 4) {
+    errorEl.textContent = '❌ 아이디는 2자 이상, 비밀번호는 4자 이상이어야 합니다.';
+    errorEl.style.display = 'block';
+    successEl.style.display = 'none';
     return;
   }
 
   document.getElementById('loadingOverlay').classList.add('show');
   loginBtn.disabled = true;
   errorEl.style.display = 'none';
+  successEl.style.display = 'none';
 
   try {
     const hashedPw = sha256(pw);
@@ -627,6 +732,13 @@ async function handleLogin() {
     const balance = extractBalanceFromHTML(html);
 
     if (response.ok || response.status === 302) {
+      // ✅ 로그인 성공 시 정보 저장
+      if (rememberMe) {
+        saveCredentials(id, pw);
+      } else {
+        clearCredentials();
+      }
+
       if (balance > 0) {
         currentBalance = balance;
         localStorage.setItem(BALANCE_KEY, balance.toString());
@@ -639,7 +751,12 @@ async function handleLogin() {
       document.getElementById('mainContent').style.display = 'block';
       
       fetchData();
-      setInterval(() => {
+      
+      // ✅ 기존 인터벌 제거 후 재설정
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+      refreshInterval = setInterval(() => {
         fetchData();
       }, 5000);
     } else {
@@ -694,7 +811,7 @@ function extractBalanceFromHTML(html) {
   }
 }
 
-// ✅ 잔액 갱신 (credentials: include 추가)
+// ✅ 잔액 갱신
 async function refreshBalance(showAlert = false) {
   console.log('🔄 잔액 갱신 시작...');
   try {
@@ -733,13 +850,24 @@ async function refreshBalance(showAlert = false) {
 }
 
 function handleLogout() {
+  // ✅ 로그아웃 시 저장된 정보 삭제 (선택적)
+  if (!document.getElementById('rememberMe').checked) {
+    clearCredentials();
+  }
+  
   document.getElementById('loginOverlay').style.display = 'flex';
   document.getElementById('mainContent').style.display = 'none';
   document.getElementById('loginError').style.display = 'none';
+  document.getElementById('loginSuccess').style.display = 'none';
   sessionId = '';
   currentBalance = 0;
   prevCarNos = new Set();
   document.cookie = 'JSESSIONID=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+  
+  if (refreshInterval) {
+    clearInterval(refreshInterval);
+    refreshInterval = null;
+  }
 }
 
 function updateBalanceDisplay(balance) {
@@ -871,11 +999,10 @@ async function loadAllParkingTimes() {
 }
 
 // ============================================================
-// 📊 데이터 가져오기 (잔액 갱신 포함)
+// 📊 데이터 가져오기
 // ============================================================
 async function fetchData() {
   try {
-    // ✅ 데이터 가져오기 전에 잔액 갱신 (토스트 없이)
     await refreshBalance(false);
     
     const today = new Date();
@@ -1214,6 +1341,26 @@ function sha256(message) {
   function toHex(num){return ('00000000'+(num>>>0).toString(16)).slice(-8);}
   return toHex(h0)+toHex(h1)+toHex(h2)+toHex(h3)+toHex(h4)+toHex(h5)+toHex(h6)+toHex(h7);
 }
+
+// ============================================================
+// ✅ 초기화
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+  // ✅ 저장된 로그인 정보 자동 채우기
+  loadSavedCredentials();
+  
+  // ✅ Enter 키로 로그인
+  document.getElementById('loginPw').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      handleLogin();
+    }
+  });
+  document.getElementById('loginId').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      document.getElementById('loginPw').focus();
+    }
+  });
+});
 
 // ============================================================
 // ✅ window에 함수 노출
