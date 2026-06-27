@@ -150,73 +150,60 @@
       gap: 12px;
       flex-wrap: wrap;
     }
-    .threshold-btn {
-      background: #f59e0b;
-      color: white;
-      border: none;
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .threshold-btn:hover { background: #d97706; }
 
-    .threshold-modal {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.5);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 99999;
-    }
-    .threshold-modal.show { display: flex; }
-    .threshold-box {
-      background: white;
-      padding: 32px;
-      border-radius: 16px;
-      width: 90%;
-      max-width: 360px;
-      text-align: center;
-    }
-    .threshold-box h3 { margin-bottom: 8px; color: #1a1a2e; }
-    .threshold-box p { color: #666; font-size: 14px; margin-bottom: 16px; }
-    .threshold-box input {
-      width: 100%;
-      padding: 12px 16px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      font-size: 18px;
-      text-align: center;
-      margin-bottom: 16px;
-    }
-    .threshold-box .btn-row {
+    /* ===== 상단 버튼 ===== */
+    .top-buttons {
       display: flex;
-      gap: 12px;
+      gap: 10px;
+      flex-wrap: wrap;
     }
-    .threshold-box .btn-row button {
-      flex: 1;
-      padding: 12px;
+    .top-btn {
+      padding: 8px 20px;
       border: none;
       border-radius: 8px;
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
+      transition: all 0.2s;
+      color: white;
     }
-    .threshold-box .btn-save { background: #3b82f6; color: white; }
-    .threshold-box .btn-save:hover { background: #2563eb; }
-    .threshold-box .btn-cancel { background: #e5e7eb; color: #374151; }
-    .threshold-box .btn-cancel:hover { background: #d1d5db; }
+    .top-btn-search {
+      background: #3b82f6;
+    }
+    .top-btn-search:hover { background: #2563eb; }
+    .top-btn-search.active {
+      background: #1d4ed8;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    }
+    .top-btn-register {
+      background: #22c55e;
+    }
+    .top-btn-register:hover { background: #16a34a; }
+    .top-btn-register.active {
+      background: #15803d;
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3);
+    }
+    .top-btn-register:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .top-btn-danger {
+      background: #ef4444;
+    }
+    .top-btn-danger:hover { background: #dc2626; }
 
+    /* ===== 통계 ===== */
     .stats {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 12px;
       margin-bottom: 16px;
     }
-    @media (min-width: 768px) {
+    @media (max-width: 768px) {
       .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 480px) {
+      .stats { grid-template-columns: 1fr; }
     }
     .stat-card {
       background: white;
@@ -226,24 +213,143 @@
       border-left: 4px solid #3b82f6;
     }
     .stat-card:nth-child(2) { border-left-color: #22c55e; }
+    .stat-card:nth-child(3) { border-left-color: #f59e0b; }
+    .stat-card:nth-child(4) { border-left-color: #8b5cf6; }
     .stat-label { font-size: 12px; color: #888; }
     .stat-value { font-size: 24px; font-weight: 700; color: #1a1a2e; margin-top: 2px; }
     .stat-value.danger { color: #dc2626; }
     .stat-value.warning { color: #d97706; }
     .stat-value.success { color: #16a34a; }
+    .stat-value small { font-size: 14px; font-weight: 400; color: #888; }
 
     .refresh-balance-btn {
       background: none;
       border: none;
-      font-size: 20px;
+      font-size: 18px;
       cursor: pointer;
-      padding: 4px 8px;
-      border-radius: 8px;
+      padding: 2px 6px;
+      border-radius: 6px;
       transition: all 0.2s;
     }
     .refresh-balance-btn:hover {
       background: #f0f0f0;
       transform: rotate(180deg);
+    }
+
+    /* ===== 차량 검색 영역 ===== */
+    .search-section {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      display: none;
+    }
+    .search-section.show { display: block; }
+    .search-section .search-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .search-section input {
+      flex: 1;
+      min-width: 150px;
+      padding: 12px 16px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 18px;
+      letter-spacing: 2px;
+      text-align: center;
+    }
+    .search-section input:focus {
+      border-color: #3b82f6;
+      outline: none;
+    }
+    .search-section .search-btn {
+      padding: 12px 32px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .search-section .search-btn:hover { background: #2563eb; }
+    .search-section .search-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* ===== 주차 등록 영역 ===== */
+    .register-section {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      display: none;
+    }
+    .register-section.show { display: block; }
+    .register-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .register-info .info-item {
+      padding: 12px;
+      background: #f8fafc;
+      border-radius: 8px;
+    }
+    .register-info .info-item .label {
+      font-size: 12px;
+      color: #888;
+    }
+    .register-info .info-item .value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+    .register-info .info-item .value .highlight-red { color: #dc2626; }
+    .register-info .info-item .value .highlight-orange { color: #d97706; }
+    .register-info .info-item .value .highlight-green { color: #16a34a; }
+    .register-actions {
+      display: flex;
+      gap: 12px;
+    }
+    .register-actions button {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      color: white;
+    }
+    .register-actions .btn-cancel { background: #ef4444; }
+    .register-actions .btn-cancel:hover { background: #dc2626; }
+    .register-actions .btn-register { background: #22c55e; }
+    .register-actions .btn-register:hover { background: #16a34a; }
+    .register-actions .btn-register:disabled { opacity: 0.5; cursor: not-allowed; }
+    .register-empty {
+      text-align: center;
+      padding: 30px;
+      color: #94a3b8;
+    }
+
+    @keyframes blinkNotice {
+      0% { background-color: #FFEAA7; }
+      50% { background-color: #E35E3A; color: white; }
+      100% { background-color: #FFEAA7; }
+    }
+    .notice-blink {
+      animation: blinkNotice 1s ease-in-out infinite;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      text-align: center;
+      font-weight: 700;
+      font-size: 18px;
     }
 
     .table-wrap {
@@ -301,6 +407,7 @@
       table { font-size: 10px; }
       th, td { padding: 4px 6px; }
       th:nth-child(3), td:nth-child(3) { min-width: 80px; max-width: 100px; }
+      .register-info { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 480px) {
@@ -308,6 +415,9 @@
       th, td { padding: 3px 4px; }
       th:nth-child(3), td:nth-child(3) { min-width: 60px; max-width: 80px; }
       .discount-detail-btn { font-size: 9px; }
+      .search-section .search-row { flex-direction: column; }
+      .search-section .search-row input { width: 100%; }
+      .search-section .search-row .search-btn { width: 100%; }
     }
 
     .auto-refresh-badge {
@@ -447,6 +557,47 @@
       text-align: center;
       font-weight: 600;
     }
+
+    /* ===== 차량조회/주차등록 버튼 스타일 ===== */
+    .action-buttons {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .action-btn {
+      flex: 1;
+      padding: 14px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: white;
+      text-align: center;
+      min-width: 120px;
+    }
+    .action-btn-search {
+      background: #3b82f6;
+    }
+    .action-btn-search:hover { background: #2563eb; }
+    .action-btn-search.active {
+      background: #1d4ed8;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4);
+    }
+    .action-btn-register {
+      background: #22c55e;
+    }
+    .action-btn-register:hover { background: #16a34a; }
+    .action-btn-register.active {
+      background: #15803d;
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.4);
+    }
+    .action-btn-register:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -519,20 +670,82 @@
     </div>
   </div>
 
+  <!-- ===== 통계 4개 ===== -->
   <div class="stats" id="statsContainer">
     <div class="stat-card">
-      <div class="stat-label">등록대수</div>
+      <div class="stat-label">📊 등록대수</div>
       <div class="stat-value" id="statTotal">0</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">💰 계정 잔여 금액</div>
-      <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 6px;">
         <div class="stat-value" id="statRemain">0원</div>
         <button class="refresh-balance-btn" onclick="fetchData()" title="잔액 새로고침">🔄</button>
       </div>
     </div>
+    <div class="stat-card">
+      <div class="stat-label">⏱️ 현재 주차 중</div>
+      <div class="stat-value" id="statParking">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">✅ 출차완료</div>
+      <div class="stat-value" id="statCompleted">0</div>
+    </div>
   </div>
 
+  <!-- ===== 차량조회 / 주차등록 버튼 ===== -->
+  <div class="action-buttons">
+    <button class="action-btn action-btn-search active" id="btnSearch" onclick="switchTab('search')">
+      🔍 차량조회
+    </button>
+    <button class="action-btn action-btn-register" id="btnRegister" onclick="switchTab('register')" disabled>
+      📝 주차등록
+    </button>
+  </div>
+
+  <!-- ===== 차량조회 탭 ===== -->
+  <div class="search-section show" id="searchSection">
+    <div class="search-row">
+      <input type="text" id="searchInput" placeholder="차량번호를 입력하세요 (예: 1234)" maxlength="10" onkeypress="if(event.key==='Enter') handleSearch()">
+      <button class="search-btn" id="searchBtn" onclick="handleSearch()">🔍 조회</button>
+    </div>
+  </div>
+
+  <!-- ===== 주차등록 탭 ===== -->
+  <div class="register-section" id="registerSection">
+    <div id="registerInfo">
+      <div class="register-info">
+        <div class="info-item">
+          <div class="label">🚗 차량번호</div>
+          <div class="value" id="regCarNo">-</div>
+        </div>
+        <div class="info-item">
+          <div class="label">⏱️ 주차시간</div>
+          <div class="value" id="regParkingTime">-</div>
+        </div>
+        <div class="info-item">
+          <div class="label">⏳ 출차여유시간</div>
+          <div class="value" id="regRemainTime">-</div>
+        </div>
+        <div class="info-item">
+          <div class="label">📋 할인내역</div>
+          <div class="value" id="regDiscountInfo">-</div>
+        </div>
+      </div>
+      <div id="regNotice" class="notice-blink" style="display:none;">
+        ⏰ 등록 시간부터 30분 이내 출차 시 무료
+      </div>
+      <div class="register-actions">
+        <button class="btn-cancel" onclick="cancelRegister()">취소</button>
+        <button class="btn-register" id="registerBtn" onclick="handleRegister()" disabled>📝 등록</button>
+      </div>
+    </div>
+    <div id="registerEmpty" class="register-empty">
+      🔍 먼저 차량을 조회해주세요
+    </div>
+  </div>
+
+  <!-- 테이블 -->
   <div class="table-wrap">
     <div class="table-scroll">
       <table>
@@ -573,6 +786,7 @@ let sessionId = '';
 let currentBalance = 0;
 let allCarsData = [];
 let refreshInterval = null;
+let parkingData = null;
 
 // ============================================================
 // 💾 저장된 로그인 정보
@@ -650,10 +864,7 @@ async function handleLogin() {
       body: `userId=${encodeURIComponent(id)}&userPwd=${hashedPw}`
     });
 
-    // ✅ 쿠키에서 JSESSIONID 추출
     let sessionIdFromCookie = null;
-    
-    // 1. response.headers에서 set-cookie 확인
     const setCookieHeader = response.headers.get('set-cookie');
     if (setCookieHeader) {
       const match = setCookieHeader.match(/JSESSIONID=([^;]+)/);
@@ -661,8 +872,6 @@ async function handleLogin() {
         sessionIdFromCookie = match[1];
       }
     }
-    
-    // 2. document.cookie에서 직접 확인
     if (!sessionIdFromCookie) {
       const cookieMatch = document.cookie.match(/JSESSIONID=([^;]+)/);
       if (cookieMatch) {
@@ -712,7 +921,6 @@ async function handleLogin() {
   }
 }
 
-// ✅ HTML에서 잔액 추출 함수
 function extractBalanceFromHTML(html) {
   try {
     const match1 = html.match(/id="lblRemainTimeCharge"[^>]*>([^<]+)<\/label>/);
@@ -720,70 +928,38 @@ function extractBalanceFromHTML(html) {
       const val = parseInt(match1[1].replace(/,/g, '').trim());
       if (val > 0) return val;
     }
-    
     const match2 = html.match(/id="extraCharge"[^>]*>([^<]+)<\/label>/);
     if (match2) {
       const val = parseInt(match2[1].replace(/,/g, '').trim());
       if (val > 0) return val;
     }
-    
-    const match3 = html.match(/id="[^"]*(?:remain|charge)[^"]*"[^>]*value="([^"]+)"/i);
-    if (match3) {
-      const val = parseInt(match3[1].replace(/,/g, '').trim());
-      if (val > 0) return val;
-    }
-    
     const saved = localStorage.getItem(BALANCE_KEY);
-    if (saved !== null) {
-      return parseInt(saved);
-    }
-    
+    if (saved !== null) return parseInt(saved);
     return 0;
   } catch (e) {
-    console.warn('⚠️ 잔액 추출 실패:', e);
     const saved = localStorage.getItem(BALANCE_KEY);
-    if (saved !== null) {
-      return parseInt(saved);
-    }
+    if (saved !== null) return parseInt(saved);
     return 0;
   }
 }
 
-// ✅ 잔액 갱신
 async function refreshBalance(showAlert = false) {
-  console.log('🔄 잔액 갱신 시작...');
   try {
     const response = await fetch(`${PROXY_BASE}/discount/registration`, {
       credentials: 'include'
     });
-    
     const html = await response.text();
     const balance = extractBalanceFromHTML(html);
-    
     if (balance > 0) {
       currentBalance = balance;
       localStorage.setItem(BALANCE_KEY, balance.toString());
       updateBalanceDisplay(balance);
-      console.log('💰 잔액 갱신:', balance);
-      
-      if (showAlert) {
-        showToast('✅ 잔액 갱신 완료', `${balance.toLocaleString()}원`, 'success');
-      }
-      
       if (balance < THRESHOLD_AMOUNT) {
-        showToast('⚠️ 계정 잔액 부족', `현재 잔여 금액이 ${balance.toLocaleString()}원 입니다. (임계값: ${THRESHOLD_AMOUNT.toLocaleString()}원)`, 'warning');
-      }
-    } else {
-      console.warn('⚠️ 잔액이 0이거나 추출 실패');
-      if (showAlert) {
-        showToast('❌ 갱신 실패', '잔액을 불러오지 못했습니다.', 'danger');
+        showToast('⚠️ 계정 잔액 부족', `현재 잔여 금액이 ${balance.toLocaleString()}원 입니다.`, 'warning');
       }
     }
   } catch (e) {
     console.warn('⚠️ 잔액 갱신 실패:', e);
-    if (showAlert) {
-      showToast('❌ 갱신 실패', '잔액을 불러오지 못했습니다.', 'danger');
-    }
   }
 }
 
@@ -794,8 +970,10 @@ function handleLogout() {
   document.getElementById('loginError').style.display = 'none';
   sessionId = '';
   currentBalance = 0;
+  parkingData = null;
   document.cookie = 'JSESSIONID=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
   if (refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; }
+  switchTab('search');
 }
 
 function updateBalanceDisplay(balance) {
@@ -810,128 +988,469 @@ function updateBalanceDisplay(balance) {
 }
 
 // ============================================================
-// 🔧 dc_time에서 분 추출
+// 🔄 탭 전환
 // ============================================================
-function extractMinutesFromDcTime(dcTime) {
-  if (!dcTime) return 0;
-  
-  let match = dcTime.match(/\(([\d.]+)\)/);
-  if (match) {
-    return parseFloat(match[1]) || 0;
+function switchTab(tab) {
+  const searchSection = document.getElementById('searchSection');
+  const registerSection = document.getElementById('registerSection');
+  const btnSearch = document.getElementById('btnSearch');
+  const btnRegister = document.getElementById('btnRegister');
+
+  if (tab === 'search') {
+    searchSection.classList.add('show');
+    registerSection.classList.remove('show');
+    btnSearch.classList.add('active');
+    btnRegister.classList.remove('active');
+  } else if (tab === 'register') {
+    searchSection.classList.remove('show');
+    registerSection.classList.add('show');
+    btnSearch.classList.remove('active');
+    btnRegister.classList.add('active');
   }
+}
+
+// ============================================================
+// 🔍 차량 검색
+// ============================================================
+async function handleSearch() {
+  const carNo = document.getElementById('searchInput').value.trim();
   
-  let hours = 0, minutes = 0;
-  const hourMatch = dcTime.match(/(\d+)\s*시간/);
-  const minMatch = dcTime.match(/(\d+)\s*분/);
-  if (hourMatch) hours = parseInt(hourMatch[1]);
-  if (minMatch) minutes = parseInt(minMatch[1]);
-  if (hours > 0 || minutes > 0) {
-    return hours * 60 + minutes;
+  if (!carNo || carNo.length < 2) {
+    showToast('⚠️ 안내', '차량 번호는 2자리 이상 입력해주세요', 'warning');
+    return;
   }
-  
-  const onlyHour = dcTime.match(/^(\d+)\s*시간$/);
-  if (onlyHour) {
-    return parseInt(onlyHour[1]) * 60;
+
+  if (!sessionId) {
+    showToast('⚠️ 로그인 필요', '먼저 로그인해주세요', 'danger');
+    return;
   }
-  
-  const onlyMin = dcTime.match(/^(\d+)\s*분$/);
-  if (onlyMin) {
-    return parseInt(onlyMin[1]) || 0;
-  }
-  
-  const pureNumber = parseFloat(dcTime);
-  if (!isNaN(pureNumber) && pureNumber > 0) {
-    return pureNumber;
-  }
-  
-  if (dcTime.includes('+')) {
-    const parts = dcTime.split('+');
-    let total = 0;
-    for (const part of parts) {
-      total += extractMinutesFromDcTime(part.trim());
+
+  document.getElementById('loadingOverlay').classList.add('show');
+  document.getElementById('loadingText').textContent = '차량 조회 중...';
+
+  try {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const entryDate = yesterday.getFullYear() +
+      String(yesterday.getMonth() + 1).padStart(2, '0') +
+      String(yesterday.getDate()).padStart(2, '0');
+
+    const response = await fetch(`${PROXY_BASE}/discount/registration/listForDiscount`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'include',
+      body: new URLSearchParams({
+        iLotArea: '17574',
+        entryDate: entryDate,
+        carNo: carNo
+      })
+    });
+
+    if (response.status === 403 || response.status === 401) {
+      handleLogout();
+      showToast('⚠️ 세션 만료', '다시 로그인해주세요', 'danger');
+      document.getElementById('loadingOverlay').classList.remove('show');
+      return;
     }
-    return total;
+
+    const data = await response.json();
+    const results = Array.isArray(data) ? data : [];
+
+    if (results.length === 0) {
+      showToast('⚠️ 안내', '검색 결과가 없습니다\n출차된 차량은 검색되지 않습니다', 'warning');
+      document.getElementById('loadingOverlay').classList.remove('show');
+      return;
+    }
+
+    if (results.length === 1) {
+      await fetchDetailAndShowResult(results[0].id);
+    } else {
+      showSearchModal(results);
+    }
+
+  } catch (error) {
+    console.error('검색 오류:', error);
+    showToast('❌ 조회 실패', error.message || '조회 중 오류가 발생했습니다', 'danger');
+  } finally {
+    document.getElementById('loadingOverlay').classList.remove('show');
+  }
+}
+
+function showSearchModal(results) {
+  const modal = document.getElementById('searchModal');
+  const body = document.getElementById('searchModalBody');
+  body.innerHTML = '';
+  
+  results.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'modal-item';
+    div.innerHTML = `
+      <div class="car-no">${item.carNo}</div>
+      <div class="car-time">입차시간: ${item.entryDateToString || '-'}</div>
+    `;
+    div.onclick = () => {
+      closeSearchModal();
+      fetchDetailAndShowResult(item.id);
+    };
+    body.appendChild(div);
+  });
+  
+  modal.classList.add('show');
+}
+
+function closeSearchModal() {
+  document.getElementById('searchModal').classList.remove('show');
+}
+
+// ============================================================
+// 📊 상세 정보 조회
+// ============================================================
+async function fetchDetailAndShowResult(id) {
+  document.getElementById('loadingOverlay').classList.add('show');
+  document.getElementById('loadingText').textContent = '상세 정보 조회 중...';
+
+  try {
+    const response = await fetch(`${PROXY_BASE}/discount/registration/getForDiscount`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'include',
+      body: new URLSearchParams({
+        id: id,
+        member_id: 'oasis_g'
+      })
+    });
+
+    if (response.status === 403 || response.status === 401) {
+      handleLogout();
+      showToast('⚠️ 세션 만료', '다시 로그인해주세요', 'danger');
+      document.getElementById('loadingOverlay').classList.remove('show');
+      return;
+    }
+
+    const detail = await response.json();
+    const discountList = detail.listDiscountType || [];
+    const parkVisitCar = detail.parkVisitCar || [];
+    const existingMinutes = parkVisitCar.reduce((sum, item) => sum + (parseFloat(item.dc_time) || 0), 0);
+    const data = detail.parkEntry;
+    
+    const parsed = parseParkingTime(data.different_time);
+    const hours = parsed.hours;
+    const minutes = parsed.minutes;
+    const displayDays = Math.floor(hours / 24);
+    const displayHours = hours % 24;
+    let formattedTime = '';
+    if (displayDays > 0) formattedTime += `${displayDays}일 `;
+    if (displayHours > 0) formattedTime += `${displayHours}시간 `;
+    if (minutes > 0) formattedTime += `${minutes}분`;
+    if (!formattedTime) formattedTime = '0분';
+
+    const hasOasisRegistration = parkVisitCar.some(item => {
+      const account = item.account_no || '';
+      const name = item.name || '';
+      return account.includes('oasis') || name.includes('oasis');
+    });
+
+    parkingData = {
+      id: data.iID,
+      carNo: data.acPlate1,
+      differentTime: formattedTime,
+      originalTime: data.different_time,
+      discountList: discountList,
+      existingMinutes: existingMinutes,
+      parkVisitCar: parkVisitCar,
+      isAlreadyRegistered: hasOasisRegistration
+    };
+
+    switchTab('register');
+    updateRegisterUI(parkingData);
+
+  } catch (error) {
+    console.error('상세 조회 오류:', error);
+    showToast('❌ 상세 조회 실패', error.message || '상세 정보를 불러오지 못했습니다', 'danger');
+  } finally {
+    document.getElementById('loadingOverlay').classList.remove('show');
+  }
+}
+
+// ============================================================
+// 📝 주차등록 UI 업데이트
+// ============================================================
+function updateRegisterUI(data) {
+  if (!data) {
+    document.getElementById('registerEmpty').style.display = 'block';
+    document.getElementById('registerInfo').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('registerEmpty').style.display = 'none';
+  document.getElementById('registerInfo').style.display = 'block';
+
+  document.getElementById('regCarNo').textContent = data.carNo || '-';
+  document.getElementById('regParkingTime').textContent = data.differentTime || '-';
+
+  const totalMinutes = calculateTotalParkingTime(data.originalTime);
+  const remainTime = Math.max(0, totalMinutes + 30 - data.existingMinutes);
+  const remainDisplay = formatTime(remainTime);
+  const remainEl = document.getElementById('regRemainTime');
+  remainEl.textContent = remainDisplay;
+  remainEl.className = 'value';
+  if (remainTime <= 0) remainEl.classList.add('highlight-red');
+  else if (remainTime <= 30) remainEl.classList.add('highlight-orange');
+  else remainEl.classList.add('highlight-green');
+
+  const discountTotal = data.discountList.reduce((sum, d) => sum + (parseInt(d.discount_value) || 0), 0);
+  document.getElementById('regDiscountInfo').textContent = formatTime(discountTotal) || '-';
+
+  const registerBtn = document.getElementById('registerBtn');
+  if (data.isAlreadyRegistered) {
+    registerBtn.disabled = true;
+    registerBtn.textContent = '✅ 이미 등록됨';
+    document.getElementById('regNotice').style.display = 'none';
+    showToast('⚠️ 안내', '이미 등록된 차량입니다', 'warning');
+  } else {
+    registerBtn.disabled = false;
+    registerBtn.textContent = '📝 등록';
+    document.getElementById('regNotice').style.display = remainTime > 0 ? 'block' : 'none';
+  }
+}
+
+// ============================================================
+// 📝 주차등록
+// ============================================================
+async function handleRegister() {
+  if (!parkingData) {
+    showToast('⚠️ 안내', '먼저 차량을 조회해주세요', 'warning');
+    return;
+  }
+
+  if (parkingData.isAlreadyRegistered) {
+    showToast('⚠️ 안내', '이미 등록된 차량입니다', 'warning');
+    return;
+  }
+
+  const totalMinutesWithGrace = calculateFinalParkingTime(parkingData.originalTime);
+  const roundedMinutes = Math.ceil(totalMinutesWithGrace / 30) * 30;
+  const remainingMinutes = roundedMinutes - parkingData.existingMinutes;
+
+  if (remainingMinutes <= 0) {
+    showToast('✅ 주차 등록 완료', '30분 내로 출차 해주세요', 'success');
+    parkingData.isAlreadyRegistered = true;
+    updateRegisterUI(parkingData);
+    fetchData();
+    return;
+  }
+
+  document.getElementById('registerBtn').disabled = true;
+  document.getElementById('loadingOverlay').classList.add('show');
+  document.getElementById('loadingText').textContent = '등록 중...';
+
+  try {
+    const discountIds = selectDiscountType(remainingMinutes, parkingData.discountList);
+    if (!discountIds || discountIds.length === 0) {
+      showToast('❌ 오류', '선택된 할인이 없습니다', 'danger');
+      document.getElementById('registerBtn').disabled = false;
+      document.getElementById('loadingOverlay').classList.remove('show');
+      return;
+    }
+
+    for (const discountId of discountIds) {
+      const response = await fetch(`${PROXY_BASE}/discount/registration/save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'include',
+        body: new URLSearchParams({
+          peId: parkingData.id,
+          carNo: parkingData.carNo,
+          discountType: discountId,
+          saveCnt: '1',
+          memo: ''
+        })
+      });
+
+      if (response.status === 403 || response.status === 401) {
+        handleLogout();
+        showToast('⚠️ 세션 만료', '다시 로그인해주세요', 'danger');
+        document.getElementById('registerBtn').disabled = false;
+        document.getElementById('loadingOverlay').classList.remove('show');
+        return;
+      }
+
+      const result = await response.text();
+      if (result.includes('<!DOCTYPE')) {
+        showToast('⚠️ 세션 만료', '로그인 세션이 만료되었습니다', 'danger');
+        document.getElementById('registerBtn').disabled = false;
+        document.getElementById('loadingOverlay').classList.remove('show');
+        return;
+      }
+    }
+
+    const baseTime = calculateTotalParkingTime(parkingData.originalTime);
+    const maxRegisteredTime = Math.min(baseTime + 30, 600);
+    const remainTime = maxRegisteredTime - baseTime;
+
+    parkingData.isAlreadyRegistered = true;
+    updateRegisterUI(parkingData);
+
+    if (baseTime > 600) {
+      const extraMinutes = baseTime - 600;
+      showToast('⚠️ 10시간 초과!', `${extraMinutes}분 초과하여 추가요금이 발생합니다`, 'danger');
+    } else if (remainTime <= 30 && remainTime > 0) {
+      showToast('✅ 주차 등록 완료', `${remainTime}분 내로 출차 해주세요`, 'success');
+    } else {
+      showToast('✅ 주차 등록 완료', '30분 내로 출차 해주세요', 'success');
+    }
+
+    fetchData();
+
+  } catch (error) {
+    console.error('등록 오류:', error);
+    showToast('❌ 등록 실패', error.message || '등록 중 오류가 발생했습니다', 'danger');
+  } finally {
+    document.getElementById('registerBtn').disabled = false;
+    document.getElementById('loadingOverlay').classList.remove('show');
+  }
+}
+
+function cancelRegister() {
+  parkingData = null;
+  document.getElementById('registerEmpty').style.display = 'block';
+  document.getElementById('registerInfo').style.display = 'none';
+  document.getElementById('registerBtn').disabled = true;
+  switchTab('search');
+  document.getElementById('searchInput').value = '';
+}
+
+// ============================================================
+// 🔧 할인 선택 로직
+// ============================================================
+function selectDiscountType(totalMinutes, discountList) {
+  if (!discountList || discountList.length === 0) return ['20'];
+  const available = discountList.filter(d => d.id !== '14').sort((a, b) => parseInt(a.discount_value) - parseInt(b.discount_value));
+  const needComboTimes = [180, 300, 330, 390, 420, 540];
+  
+  if (!needComboTimes.includes(totalMinutes)) {
+    for (const d of available) {
+      if (parseInt(d.discount_value) >= totalMinutes) return [d.id];
+    }
+    return ['16'];
   }
   
-  const compactMatch = dcTime.match(/(\d+)시간\s*(\d+)분/);
-  if (compactMatch) {
-    return parseInt(compactMatch[1]) * 60 + parseInt(compactMatch[2]);
+  const combinable = available.filter(d => d.id === '20' || d.id === '21');
+  const single = available.filter(d => d.id !== '20' && d.id !== '21');
+  let bestCombo = null;
+  let bestOver = Infinity;
+  
+  for (const d of available) {
+    if (parseInt(d.discount_value) >= totalMinutes && parseInt(d.discount_value) < bestOver) {
+      bestOver = parseInt(d.discount_value);
+      bestCombo = [d.id];
+    }
   }
   
-  console.warn('⚠️ 파싱 실패한 dc_time:', dcTime);
-  return 0;
-}
-
-// ============================================================
-// 📅 날짜 파싱 헬퍼 함수
-// ============================================================
-function parseDate(dateStr) {
-  if (!dateStr) return new Date(0);
-  return new Date(
-    parseInt(dateStr.substring(0, 4)),
-    parseInt(dateStr.substring(4, 6)) - 1,
-    parseInt(dateStr.substring(6, 8)),
-    parseInt(dateStr.substring(8, 10)) || 0,
-    parseInt(dateStr.substring(10, 12)) || 0,
-    parseInt(dateStr.substring(12, 14)) || 0
-  );
-}
-
-// ============================================================
-// ✅ KV 데이터 불러오기
-// ============================================================
-async function loadCompletedCars() {
-  try {
-    const response = await fetch(`${PROXY_BASE}/kv`);
-    const result = await response.json();
-    return result.data || [];
-  } catch (e) {
-    console.warn('⚠️ KV 로드 실패:', e);
-    return [];
+  const oneHour = combinable.find(d => d.id === '20');
+  const twoHour = combinable.find(d => d.id === '21');
+  
+  if (oneHour) {
+    for (const d of single) {
+      const sum = parseInt(oneHour.discount_value) + parseInt(d.discount_value);
+      if (sum >= totalMinutes && sum - totalMinutes < bestOver) {
+        bestOver = sum - totalMinutes;
+        bestCombo = ['20', d.id];
+      }
+    }
   }
-}
-
-async function saveCompletedCars(data) {
-  try {
-    await fetch(`${PROXY_BASE}/kv`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data })
-    });
-  } catch (e) {
-    console.warn('⚠️ KV 저장 실패:', e);
+  
+  if (twoHour) {
+    for (const d of single) {
+      const sum = parseInt(twoHour.discount_value) + parseInt(d.discount_value);
+      if (sum >= totalMinutes && sum - totalMinutes < bestOver) {
+        bestOver = sum - totalMinutes;
+        bestCombo = ['21', d.id];
+      }
+    }
   }
-}
-
-async function saveAllParkingTimes(data) {
-  try {
-    await fetch(`${PROXY_BASE}/kv/parking/all`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data })
-    });
-  } catch (e) {
-    console.warn('⚠️ 주차시간 일괄 저장 실패:', e);
+  
+  if (oneHour && twoHour && parseInt(oneHour.discount_value) + parseInt(twoHour.discount_value) >= totalMinutes) {
+    const over = parseInt(oneHour.discount_value) + parseInt(twoHour.discount_value) - totalMinutes;
+    if (over < bestOver) {
+      bestOver = over;
+      bestCombo = ['20', '21'];
+    }
   }
-}
-
-async function loadAllParkingTimes() {
-  try {
-    const response = await fetch(`${PROXY_BASE}/kv/parking/all`);
-    const result = await response.json();
-    return result.data || {};
-  } catch (e) {
-    console.warn('⚠️ 주차시간 일괄 로드 실패:', e);
-    return {};
-  }
+  
+  return bestCombo || ['20'];
 }
 
 // ============================================================
-// 📊 데이터 가져오기 (잔액 갱신 포함)
+// 🔧 시간 파싱
+// ============================================================
+function parseParkingTime(timeStr) {
+  if (!timeStr) return { hours: 0, minutes: 0 };
+  let hours = 0, minutes = 0, days = 0;
+
+  if (timeStr.includes('일')) {
+    const dayMatch = timeStr.match(/(\d+)일/);
+    if (dayMatch) days = parseInt(dayMatch[1], 10);
+  }
+  if (timeStr.includes('시간')) {
+    const hourMatch = timeStr.match(/(\d+)시간/);
+    if (hourMatch) hours = parseInt(hourMatch[1], 10);
+  }
+  if (timeStr.includes('분')) {
+    const minMatch = timeStr.match(/(\d+)분/);
+    if (minMatch) minutes = parseInt(minMatch[1], 10);
+  }
+  if (timeStr.includes(':')) {
+    const parts = timeStr.split(':');
+    hours = parseInt(parts[0], 10) || 0;
+    minutes = parseInt(parts[1], 10) || 0;
+  }
+  return { hours: hours + days * 24, minutes };
+}
+
+function calculateTotalParkingTime(timeStr) {
+  const { hours, minutes } = parseParkingTime(timeStr);
+  return hours * 60 + minutes;
+}
+
+function calculateFinalParkingTime(timeStr) {
+  let totalMinutes = calculateTotalParkingTime(timeStr) + 30;
+  return Math.min(totalMinutes, 600);
+}
+
+function formatTime(minutes) {
+  if (minutes <= 0) return '0분';
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  let result = '';
+  if (hours > 0) result += hours + '시간 ';
+  if (mins > 0) result += mins + '분';
+  return result.trim() || '0분';
+}
+
+function fncDatetimeFormat(dateStr) {
+  if (!dateStr) return '-';
+  const date = dateStr.substring(0, 8);
+  const time = dateStr.substring(8, 14);
+  return date.substring(0,4) + '-' + date.substring(4,6) + '-' + date.substring(6,8) + ' ' +
+         time.substring(0,2) + ':' + time.substring(2,4) + ':' + time.substring(4,6);
+}
+
+// ============================================================
+// 📊 데이터 가져오기
 // ============================================================
 async function fetchData() {
   try {
-    // ✅ 데이터 가져오기 전에 잔액 갱신 (토스트 없이)
     await refreshBalance(false);
     
     const today = new Date();
@@ -1013,18 +1532,10 @@ async function fetchData() {
       }
     }
 
-    const currentCarNos = new Set(filteredCars.map(car => car.carNo));
-    
-    let completedCars = await loadCompletedCars();
-    const validCompleted = completedCars.filter(car => !currentCarNos.has(car.carNo));
-    completedCars = validCompleted;
-
-    const savedParkingTimes = await loadAllParkingTimes();
-
-    const currentParkingTimes = {};
     const detailedCars = [];
     const now = new Date();
-    let hasChanges = false;
+    let parkingCount = 0;
+    let completedCount = 0;
     
     for (const car of filteredCars) {
       let parkingMinutes = 0;
@@ -1036,30 +1547,18 @@ async function fetchData() {
         if (car.entryDate) {
           const entry = parseDate(car.entryDate);
           parkingMinutes = Math.floor((now - entry) / 60000);
-          currentParkingTimes[car.carNo] = parkingMinutes;
         }
         remainTime = Math.max(0, car.totalDiscountTime - parkingMinutes);
         if (remainTime <= 0) {
           statusText = '미출차 (초과)';
           statusClass = 'status-overdue';
         }
+        parkingCount++;
       } else {
-        parkingMinutes = savedParkingTimes[car.carNo] || 0;
         remainTime = 0;
         statusText = '출차완료';
         statusClass = 'status-complete';
-        
-        const exists = completedCars.some(c => c.carNo === car.carNo);
-        if (!exists) {
-          completedCars.push({
-            carNo: car.carNo,
-            parkingMinutes: parkingMinutes,
-            exitTime: new Date().toISOString(),
-            totalDiscountTime: car.totalDiscountTime,
-            discountDetails: car.discountDetails
-          });
-          hasChanges = true;
-        }
+        completedCount++;
       }
       
       detailedCars.push({
@@ -1073,37 +1572,6 @@ async function fetchData() {
       });
     }
 
-    if (Object.keys(currentParkingTimes).length > 0) {
-      await saveAllParkingTimes(currentParkingTimes);
-    }
-
-    if (hasChanges) {
-      await saveCompletedCars(completedCars);
-    }
-
-    for (const completed of completedCars) {
-      if (!detailedCars.some(c => c.carNo === completed.carNo && c.paidStat === '10')) {
-        const isFiltered = filteredCars.some(c => c.carNo === completed.carNo);
-        if (isFiltered) {
-          detailedCars.push({
-            carNo: completed.carNo,
-            totalDiscountTime: completed.totalDiscountTime || 0,
-            regDate: '-',
-            entryDate: '-',
-            discountDetails: completed.discountDetails || [],
-            hasOasis: true,
-            paidStat: '10',
-            isNew: false,
-            parkingMinutes: completed.parkingMinutes || 0,
-            remainTime: 0,
-            statusText: '출차완료',
-            statusClass: 'status-complete',
-            totalDiscountTimeDisplay: formatTime(completed.totalDiscountTime || 0)
-          });
-        }
-      }
-    }
-
     allCarsData = detailedCars;
 
     detailedCars.sort((a, b) => {
@@ -1114,7 +1582,13 @@ async function fetchData() {
       return 0;
     });
     
-    renderData(detailedCars);
+    document.getElementById('statTotal').textContent = detailedCars.length;
+    document.getElementById('statParking').textContent = parkingCount;
+    document.getElementById('statCompleted').textContent = completedCount;
+    document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
+
+    renderTable(detailedCars);
+    
   } catch (error) {
     console.error('데이터 로드 실패:', error);
     document.getElementById('tableBody').innerHTML = 
@@ -1122,50 +1596,7 @@ async function fetchData() {
   }
 }
 
-// ============================================================
-// 📋 할인내역 상세 모달
-// ============================================================
-function showDiscountDetails(carNo) {
-  const car = allCarsData.find(c => c.carNo === carNo);
-  if (!car || !car.discountDetails || car.discountDetails.length === 0) {
-    showToast('알림', '할인내역이 없습니다.', 'warning');
-    return;
-  }
-
-  document.getElementById('detailModalTitle').textContent = `🚗 ${carNo} 할인내역`;
-  
-  let html = '<table>';
-  html += `<tr><th>할인명</th><th>등록자</th><th>등록시간</th><th>상태</th></tr>`;
-  
-  for (const detail of car.discountDetails) {
-    const status = detail.paidStat === '10' ? '출차완료' : '미출차';
-    const registrant = detail.registrantName || detail.registrant || '-';
-    html += `<tr>
-      <td>${detail.discountName || '-'}</td>
-      <td>${registrant}</td>
-      <td>${fncDatetimeFormat(detail.regDate)}</td>
-      <td>${status}</td>
-    </tr>`;
-  }
-  html += '</table>';
-  
-  html += `<div class="detail-total-time">💰 총 할인시간: ${formatTime(car.totalDiscountTime)}</div>`;
-  
-  document.getElementById('detailModalBody').innerHTML = html;
-  document.getElementById('detailModal').classList.add('show');
-}
-
-function closeDetailModal() {
-  document.getElementById('detailModal').classList.remove('show');
-}
-
-// ============================================================
-// 🖥️ 렌더링
-// ============================================================
-function renderData(data) {
-  document.getElementById('statTotal').textContent = data.length;
-  document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
-
+function renderTable(data) {
   const tbody = document.getElementById('tableBody');
   tbody.innerHTML = '';
   if (!data || data.length === 0) {
@@ -1201,38 +1632,77 @@ function renderData(data) {
       <td><span class="${row.statusClass}">${row.statusText}</span></td>
     `;
 
-    if (row.isNew) {
-      tr.classList.add('row-new');
-      setTimeout(() => {
-        tr.classList.remove('row-new');
-      }, 3000);
-    }
-
     tbody.appendChild(tr);
   });
+}
+
+function showDiscountDetails(carNo) {
+  const car = allCarsData.find(c => c.carNo === carNo);
+  if (!car || !car.discountDetails || car.discountDetails.length === 0) {
+    showToast('알림', '할인내역이 없습니다.', 'warning');
+    return;
+  }
+
+  document.getElementById('detailModalTitle').textContent = `🚗 ${carNo} 할인내역`;
+  
+  let html = '<table>';
+  html += `<tr><th>할인명</th><th>등록자</th><th>등록시간</th><th>상태</th></tr>`;
+  
+  for (const detail of car.discountDetails) {
+    const status = detail.paidStat === '10' ? '출차완료' : '미출차';
+    const registrant = detail.registrantName || detail.registrant || '-';
+    html += `<tr>
+      <td>${detail.discountName || '-'}</td>
+      <td>${registrant}</td>
+      <td>${fncDatetimeFormat(detail.regDate)}</td>
+      <td>${status}</td>
+    </tr>`;
+  }
+  html += '</table>';
+  
+  html += `<div class="detail-total-time">💰 총 할인시간: ${formatTime(car.totalDiscountTime)}</div>`;
+  
+  document.getElementById('detailModalBody').innerHTML = html;
+  document.getElementById('detailModal').classList.add('show');
+}
+
+function closeDetailModal() {
+  document.getElementById('detailModal').classList.remove('show');
 }
 
 // ============================================================
 // 🔧 유틸
 // ============================================================
-function formatTime(minutes) {
-  if (minutes <= 0) return '0분';
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  let result = '';
-  if (hours > 0) result += hours + '시간 ';
-  if (mins > 0) result += mins + '분';
-  return result.trim() || '0분';
+function extractMinutesFromDcTime(dcTime) {
+  if (!dcTime) return 0;
+  let match = dcTime.match(/\(([\d.]+)\)/);
+  if (match) return parseFloat(match[1]) || 0;
+  let hours = 0, minutes = 0;
+  const hourMatch = dcTime.match(/(\d+)\s*시간/);
+  const minMatch = dcTime.match(/(\d+)\s*분/);
+  if (hourMatch) hours = parseInt(hourMatch[1]);
+  if (minMatch) minutes = parseInt(minMatch[1]);
+  if (hours > 0 || minutes > 0) return hours * 60 + minutes;
+  const pureNumber = parseFloat(dcTime);
+  if (!isNaN(pureNumber) && pureNumber > 0) return pureNumber;
+  return 0;
 }
 
-function fncDatetimeFormat(dateStr) {
-  if (!dateStr) return '-';
-  const date = dateStr.substring(0, 8);
-  const time = dateStr.substring(8, 14);
-  return date.substring(0,4) + '-' + date.substring(4,6) + '-' + date.substring(6,8) + ' ' +
-         time.substring(0,2) + ':' + time.substring(2,4) + ':' + time.substring(4,6);
+function parseDate(dateStr) {
+  if (!dateStr) return new Date(0);
+  return new Date(
+    parseInt(dateStr.substring(0, 4)),
+    parseInt(dateStr.substring(4, 6)) - 1,
+    parseInt(dateStr.substring(6, 8)),
+    parseInt(dateStr.substring(8, 10)) || 0,
+    parseInt(dateStr.substring(10, 12)) || 0,
+    parseInt(dateStr.substring(12, 14)) || 0
+  );
 }
 
+// ============================================================
+// 🔐 SHA-256
+// ============================================================
 function sha256(message) {
   function rightRotate(value, amount) { return (value >>> amount) | (value << (32 - amount)); }
   const msgBytes = new TextEncoder().encode(message);
@@ -1272,17 +1742,26 @@ function sha256(message) {
 }
 
 // ============================================================
+// ✅ 초기화
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+  loadSavedCredentials();
+});
+
+// ============================================================
 // ✅ window에 함수 노출
 // ============================================================
 window.handleLogin = handleLogin;
 window.handleLogout = handleLogout;
-window.openThresholdModal = openThresholdModal;
-window.closeThresholdModal = closeThresholdModal;
-window.saveThreshold = saveThreshold;
+window.handleSearch = handleSearch;
+window.handleRegister = handleRegister;
+window.cancelRegister = cancelRegister;
+window.switchTab = switchTab;
+window.fetchData = fetchData;
 window.showDiscountDetails = showDiscountDetails;
+window.closeSearchModal = closeSearchModal;
 window.closeDetailModal = closeDetailModal;
 window.refreshBalance = refreshBalance;
-window.fetchData = fetchData;
 </script>
 
 </body>
