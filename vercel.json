@@ -14,11 +14,11 @@
   "routes": [
     {
       "src": "/api/proxy/(.*)",
-      "dest": "/api/proxy.js"
+      "dest": "/api/proxy"
     },
     {
       "src": "/api/(.*)",
-      "dest": "/api/proxy.js"
+      "dest": "/api/proxy"
     },
     {
       "src": "/(.*)",
