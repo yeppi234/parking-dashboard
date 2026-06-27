@@ -69,6 +69,27 @@
       margin-bottom: 12px;
       display: none;
     }
+    .login-success {
+      color: #16a34a;
+      font-size: 14px;
+      text-align: center;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .remember-me {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      color: #666;
+    }
+    .remember-me input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      cursor: pointer;
+    }
 
     .loading-overlay {
       position: fixed;
@@ -188,6 +209,44 @@
     .threshold-box .btn-cancel { background: #e5e7eb; color: #374151; }
     .threshold-box .btn-cancel:hover { background: #d1d5db; }
 
+    /* ===== 통계: 등록대수, 잔여금액만 ===== */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 480px) {
+      .stats { grid-template-columns: 1fr; }
+    }
+    .stat-card {
+      background: white;
+      padding: 14px 16px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      border-left: 4px solid #3b82f6;
+    }
+    .stat-card:nth-child(2) { border-left-color: #22c55e; }
+    .stat-label { font-size: 12px; color: #888; }
+    .stat-value { font-size: 24px; font-weight: 700; color: #1a1a2e; margin-top: 2px; }
+    .stat-value.danger { color: #dc2626; }
+    .stat-value.warning { color: #d97706; }
+    .stat-value.success { color: #16a34a; }
+
+    .refresh-balance-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .refresh-balance-btn:hover {
+      background: #f0f0f0;
+      transform: rotate(180deg);
+    }
+
     /* ===== 차량 검색 영역 ===== */
     .search-section {
       background: white;
@@ -229,6 +288,83 @@
     .search-section .search-btn:hover { background: #2563eb; }
     .search-section .search-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
+    /* ===== 테이블 ===== */
+    .table-wrap {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
+    .table-scroll {
+      overflow-x: auto;
+      padding: 0 4px;
+      -webkit-overflow-scrolling: touch;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      min-width: auto;
+    }
+    thead {
+      background: #f8fafc;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    th {
+      text-align: left;
+      padding: 8px 10px;
+      font-weight: 600;
+      color: #475569;
+      white-space: nowrap;
+    }
+    td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #1a1a2e;
+    }
+    tbody tr:hover { background: #f8fafc; }
+
+    th:first-child, td:first-child { min-width: 35px; max-width: 40px; text-align: center; }
+    th:nth-child(2), td:nth-child(2) { min-width: 70px; max-width: 90px; }
+    th:nth-child(3), td:nth-child(3) { min-width: 100px; max-width: 130px; }
+    th:nth-child(4), td:nth-child(4) { min-width: 55px; max-width: 75px; }
+    th:nth-child(5), td:nth-child(5) { min-width: 55px; max-width: 100px; }
+    th:nth-child(6), td:nth-child(6) { min-width: 55px; max-width: 75px; }
+    th:last-child, td:last-child { min-width: 55px; max-width: 65px; text-align: center; }
+
+    .discount-detail-btn {
+      color: #3b82f6;
+      cursor: pointer;
+      text-decoration: underline;
+      font-size: 11px;
+    }
+    .discount-detail-btn:hover { color: #2563eb; }
+
+    @media (max-width: 768px) {
+      table { font-size: 10px; }
+      th, td { padding: 4px 6px; }
+      th:nth-child(3), td:nth-child(3) { min-width: 80px; max-width: 100px; }
+    }
+
+    @media (max-width: 480px) {
+      table { font-size: 9px; }
+      th, td { padding: 3px 4px; }
+      th:nth-child(3), td:nth-child(3) { min-width: 60px; max-width: 80px; }
+      .discount-detail-btn { font-size: 9px; }
+      .search-section .search-row { flex-direction: column; }
+      .search-section .search-row input { width: 100%; }
+      .search-section .search-row .search-btn { width: 100%; }
+    }
+
+    .auto-refresh-badge {
+      display: inline-block;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
     .logout-btn {
       background: #ef4444;
       color: white;
@@ -239,6 +375,14 @@
       cursor: pointer;
     }
     .logout-btn:hover { background: #dc2626; }
+    
+    .highlight-red { color: #dc2626; font-weight: 600; }
+    .highlight-orange { color: #d97706; font-weight: 600; }
+    .highlight-green { color: #16a34a; font-weight: 600; }
+
+    .status-complete { color: #16a34a; }
+    .status-pending { color: #d97706; }
+    .status-overdue { color: #dc2626; font-weight: 600; }
 
     .toast-container {
       position: fixed;
@@ -277,19 +421,68 @@
     .toast-success { border-left: 4px solid #22c55e; }
     .toast-danger { border-left: 4px solid #ef4444; }
 
-    .auto-refresh-badge {
-      display: inline-block;
-      animation: pulse 2s infinite;
+    .detail-modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 999999;
     }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
+    .detail-modal-overlay.show {
+      display: flex;
     }
-
-    @media (max-width: 480px) {
-      .search-section .search-row { flex-direction: column; }
-      .search-section .search-row input { width: 100%; }
-      .search-section .search-row .search-btn { width: 100%; }
+    .detail-modal-box {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      width: 90%;
+      max-width: 500px;
+      max-height: 80%;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .detail-modal-box h3 {
+      margin-bottom: 16px;
+      color: #1a1a2e;
+      text-align: center;
+    }
+    .detail-modal-box table {
+      width: 100%;
+      font-size: 13px;
+      border-collapse: collapse;
+    }
+    .detail-modal-box th {
+      background: #f8fafc;
+      padding: 8px 10px;
+      text-align: left;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .detail-modal-box td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .detail-modal-close {
+      margin-top: 16px;
+      padding: 12px;
+      background: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      width: 100%;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .detail-modal-close:hover { background: #c0392b; }
+    .detail-total-time {
+      margin-top: 12px;
+      padding: 10px;
+      background: #f0f7ff;
+      border-radius: 8px;
+      text-align: center;
+      font-weight: 600;
     }
   </style>
 </head>
@@ -301,8 +494,13 @@
     <h2>🔐 로그인</h2>
     <p>할인등록 현황을 보려면 로그인해주세요.</p>
     <div class="login-error" id="loginError">❌ 아이디 또는 비밀번호가 올바르지 않습니다.</div>
+    <div class="login-success" id="loginSuccess">✅ 로그인 성공! 잠시 후 대시보드로 이동합니다.</div>
     <input type="text" id="loginId" placeholder="아이디를 입력하세요">
     <input type="password" id="loginPw" placeholder="비밀번호를 입력하세요" onkeypress="if(event.key==='Enter') handleLogin()">
+    <div class="remember-me">
+      <input type="checkbox" id="rememberMe" checked>
+      <label for="rememberMe">로그인 정보 저장</label>
+    </div>
     <button id="loginBtn" onclick="handleLogin()">로그인</button>
   </div>
 </div>
@@ -334,6 +532,15 @@
   </div>
 </div>
 
+<!-- 할인내역 상세 모달 -->
+<div class="detail-modal-overlay" id="detailModal">
+  <div class="detail-modal-box">
+    <h3 id="detailModalTitle">🚗 차량번호 할인내역</h3>
+    <div id="detailModalBody"></div>
+    <button class="detail-modal-close" onclick="closeDetailModal()">닫기</button>
+  </div>
+</div>
+
 <div class="container" id="mainContent" style="display:none;">
   <div class="header">
     <div>
@@ -349,6 +556,21 @@
     </div>
   </div>
 
+  <!-- ===== 통계: 등록대수, 잔여금액만 ===== -->
+  <div class="stats" id="statsContainer">
+    <div class="stat-card">
+      <div class="stat-label">📊 등록대수</div>
+      <div class="stat-value" id="statTotal">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">💰 계정 잔여 금액</div>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <div class="stat-value" id="statRemain">0원</div>
+        <button class="refresh-balance-btn" onclick="fetchData()" title="잔액 새로고침">🔄</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== 차량 검색 ===== -->
   <div class="search-section">
     <div class="search-row">
@@ -357,8 +579,27 @@
     </div>
   </div>
 
-  <!-- ===== 통계, 차량조회/주차등록 버튼, 주차등록 탭, 테이블 모두 제거 ===== -->
-
+  <!-- ===== 테이블 ===== -->
+  <div class="table-wrap">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>순번</th>
+            <th>차량번호</th>
+            <th>할인등록시간</th>
+            <th>주차시간</th>
+            <th>할인내역</th>
+            <th>출차여유시간</th>
+            <th>상태</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8;">⏳ 데이터 로딩 중...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -370,12 +611,44 @@ const PROXY_BASE = '/api/proxy';
 // ============================================================
 // ⚙️ 설정
 // ============================================================
+const CREDENTIALS_KEY = 'saved_credentials';
 const STORAGE_KEY = 'threshold_amount';
 const BALANCE_KEY = 'last_balance';
 
 let THRESHOLD_AMOUNT = parseInt(localStorage.getItem(STORAGE_KEY)) || 10000;
 let sessionId = '';
 let currentBalance = 0;
+let allCarsData = [];
+let refreshInterval = null;
+
+// ============================================================
+// 💾 저장된 로그인 정보
+// ============================================================
+function loadSavedCredentials() {
+  try {
+    const saved = localStorage.getItem(CREDENTIALS_KEY);
+    if (saved) {
+      const data = JSON.parse(saved);
+      if (data.id && data.pw) {
+        document.getElementById('loginId').value = data.id;
+        document.getElementById('loginPw').value = data.pw;
+        document.getElementById('rememberMe').checked = true;
+        return true;
+      }
+    }
+  } catch (e) { console.warn('⚠️ 저장된 정보 로드 실패:', e); }
+  return false;
+}
+
+function saveCredentials(id, pw) {
+  try {
+    localStorage.setItem(CREDENTIALS_KEY, JSON.stringify({ id, pw }));
+  } catch (e) { console.warn('⚠️ 정보 저장 실패:', e); }
+}
+
+function clearCredentials() {
+  try { localStorage.removeItem(CREDENTIALS_KEY); } catch (e) {}
+}
 
 // ============================================================
 // 🍞 토스트
@@ -392,17 +665,20 @@ function showToast(title, message, type = 'warning') {
 }
 
 // ============================================================
-// 🔐 로그인 (하드코딩 제거)
+// 🔐 로그인 (하드코딩 제거, 자동로그인 유지)
 // ============================================================
 async function handleLogin() {
   const id = document.getElementById('loginId').value.trim();
   const pw = document.getElementById('loginPw').value.trim();
+  const rememberMe = document.getElementById('rememberMe').checked;
   const errorEl = document.getElementById('loginError');
+  const successEl = document.getElementById('loginSuccess');
   const loginBtn = document.getElementById('loginBtn');
 
   if (!id || !pw) {
     errorEl.textContent = '❌ 아이디와 비밀번호를 모두 입력해주세요.';
     errorEl.style.display = 'block';
+    successEl.style.display = 'none';
     return;
   }
 
@@ -410,6 +686,7 @@ async function handleLogin() {
   document.getElementById('loadingText').textContent = '로그인 중...';
   loginBtn.disabled = true;
   errorEl.style.display = 'none';
+  successEl.style.display = 'none';
 
   try {
     const hashedPw = sha256(pw);
@@ -420,23 +697,38 @@ async function handleLogin() {
       body: `userId=${encodeURIComponent(id)}&userPwd=${hashedPw}`
     });
 
+    let sessionIdFromCookie = null;
     const setCookieHeader = response.headers.get('set-cookie');
     if (setCookieHeader) {
       const match = setCookieHeader.match(/JSESSIONID=([^;]+)/);
       if (match) {
-        sessionId = match[1];
-        document.cookie = `JSESSIONID=${sessionId}; path=/;`;
-        console.log('✅ 세션 ID 저장됨:', sessionId);
+        sessionIdFromCookie = match[1];
       }
+    }
+    if (!sessionIdFromCookie) {
+      const cookieMatch = document.cookie.match(/JSESSIONID=([^;]+)/);
+      if (cookieMatch) {
+        sessionIdFromCookie = cookieMatch[1];
+      }
+    }
+
+    if (sessionIdFromCookie) {
+      sessionId = sessionIdFromCookie;
+      document.cookie = `JSESSIONID=${sessionId}; path=/;`;
+      console.log('✅ 세션 ID 저장됨:', sessionId);
     }
 
     const html = await response.text();
     const balance = extractBalanceFromHTML(html);
 
     if (response.ok || response.status === 302) {
+      if (rememberMe) saveCredentials(id, pw);
+      else clearCredentials();
+
       if (balance > 0) {
         currentBalance = balance;
         localStorage.setItem(BALANCE_KEY, balance.toString());
+        updateBalanceDisplay(balance);
       }
 
       document.getElementById('loadingOverlay').classList.remove('show');
@@ -444,7 +736,9 @@ async function handleLogin() {
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('mainContent').style.display = 'block';
       
-      document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
+      fetchData();
+      if (refreshInterval) clearInterval(refreshInterval);
+      refreshInterval = setInterval(fetchData, 5000);
     } else {
       document.getElementById('loadingOverlay').classList.remove('show');
       loginBtn.disabled = false;
@@ -482,34 +776,124 @@ function extractBalanceFromHTML(html) {
   }
 }
 
+async function refreshBalance(showAlert = false) {
+  try {
+    const response = await fetch(`${PROXY_BASE}/discount/registration`, {
+      credentials: 'include'
+    });
+    const html = await response.text();
+    const balance = extractBalanceFromHTML(html);
+    if (balance > 0) {
+      currentBalance = balance;
+      localStorage.setItem(BALANCE_KEY, balance.toString());
+      updateBalanceDisplay(balance);
+      if (balance < THRESHOLD_AMOUNT) {
+        showToast('⚠️ 계정 잔액 부족', `현재 잔여 금액이 ${balance.toLocaleString()}원 입니다.`, 'warning');
+      }
+    }
+  } catch (e) {
+    console.warn('⚠️ 잔액 갱신 실패:', e);
+  }
+}
+
 function handleLogout() {
+  if (!document.getElementById('rememberMe').checked) clearCredentials();
   document.getElementById('loginOverlay').style.display = 'flex';
   document.getElementById('mainContent').style.display = 'none';
   document.getElementById('loginError').style.display = 'none';
   sessionId = '';
   currentBalance = 0;
   document.cookie = 'JSESSIONID=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+  if (refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; }
+}
+
+function updateBalanceDisplay(balance) {
+  const el = document.getElementById('statRemain');
+  if (el) {
+    el.textContent = balance.toLocaleString() + '원';
+    el.className = 'stat-value';
+    if (balance <= 0) el.classList.add('danger');
+    else if (balance < THRESHOLD_AMOUNT) el.classList.add('warning');
+    else el.classList.add('success');
+  }
 }
 
 // ============================================================
-// ⚙️ 임계값 설정
+// 🔧 dc_time에서 분 추출
 // ============================================================
-function openThresholdModal() {
-  document.getElementById('thresholdInput').value = THRESHOLD_AMOUNT;
-  document.getElementById('thresholdModal').classList.add('show');
+function extractMinutesFromDcTime(dcTime) {
+  if (!dcTime) return 0;
+  let match = dcTime.match(/\(([\d.]+)\)/);
+  if (match) return parseFloat(match[1]) || 0;
+  let hours = 0, minutes = 0;
+  const hourMatch = dcTime.match(/(\d+)\s*시간/);
+  const minMatch = dcTime.match(/(\d+)\s*분/);
+  if (hourMatch) hours = parseInt(hourMatch[1]);
+  if (minMatch) minutes = parseInt(minMatch[1]);
+  if (hours > 0 || minutes > 0) return hours * 60 + minutes;
+  const pureNumber = parseFloat(dcTime);
+  if (!isNaN(pureNumber) && pureNumber > 0) return pureNumber;
+  return 0;
 }
-function closeThresholdModal() {
-  document.getElementById('thresholdModal').classList.remove('show');
+
+function parseDate(dateStr) {
+  if (!dateStr) return new Date(0);
+  return new Date(
+    parseInt(dateStr.substring(0, 4)),
+    parseInt(dateStr.substring(4, 6)) - 1,
+    parseInt(dateStr.substring(6, 8)),
+    parseInt(dateStr.substring(8, 10)) || 0,
+    parseInt(dateStr.substring(10, 12)) || 0,
+    parseInt(dateStr.substring(12, 14)) || 0
+  );
 }
-function saveThreshold() {
-  const val = parseInt(document.getElementById('thresholdInput').value);
-  if (val > 0) {
-    THRESHOLD_AMOUNT = val;
-    localStorage.setItem(STORAGE_KEY, val);
-    closeThresholdModal();
-    showToast('✅ 설정 완료', `잔액 알림 금액이 ${val.toLocaleString()}원으로 설정되었습니다.`, 'success');
-  } else {
-    alert('0보다 큰 금액을 입력해주세요.');
+
+// ============================================================
+// ✅ KV 데이터
+// ============================================================
+async function loadCompletedCars() {
+  try {
+    const response = await fetch(`${PROXY_BASE}/kv`);
+    const result = await response.json();
+    return result.data || [];
+  } catch (e) {
+    console.warn('⚠️ KV 로드 실패:', e);
+    return [];
+  }
+}
+
+async function saveCompletedCars(data) {
+  try {
+    await fetch(`${PROXY_BASE}/kv`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data })
+    });
+  } catch (e) {
+    console.warn('⚠️ KV 저장 실패:', e);
+  }
+}
+
+async function saveAllParkingTimes(data) {
+  try {
+    await fetch(`${PROXY_BASE}/kv/parking/all`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data })
+    });
+  } catch (e) {
+    console.warn('⚠️ 주차시간 저장 실패:', e);
+  }
+}
+
+async function loadAllParkingTimes() {
+  try {
+    const response = await fetch(`${PROXY_BASE}/kv/parking/all`);
+    const result = await response.json();
+    return result.data || {};
+  } catch (e) {
+    console.warn('⚠️ 주차시간 로드 실패:', e);
+    return {};
   }
 }
 
@@ -585,6 +969,319 @@ async function handleSearch() {
 }
 
 // ============================================================
+// 📊 데이터 가져오기
+// ============================================================
+async function fetchData() {
+  try {
+    await refreshBalance(false);
+    
+    const today = new Date();
+    const dateStr = today.getFullYear() +
+      String(today.getMonth() + 1).padStart(2, '0') +
+      String(today.getDate()).padStart(2, '0');
+
+    const headers = { 
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      'X-Requested-With': 'XMLHttpRequest'
+    };
+    if (sessionId) headers['Cookie'] = `JSESSIONID=${sessionId}`;
+
+    const response = await fetch(`${PROXY_BASE}/state/doListMst`, {
+      method: 'POST',
+      headers: headers,
+      credentials: 'include',
+      body: new URLSearchParams({
+        startDate: dateStr,
+        endDate: dateStr,
+        account_no: '',
+        rowcount: '50000'
+      })
+    });
+
+    if (response.status === 403 || response.status === 401) {
+      handleLogout();
+      return;
+    }
+
+    const result = await response.json();
+    const rawData = result.data || [];
+    
+    const carMap = new Map();
+    for (const row of rawData) {
+      const carNo = row.carno;
+      if (!carNo) continue;
+      
+      if (!carMap.has(carNo)) {
+        carMap.set(carNo, {
+          carNo,
+          totalDiscountTime: 0,
+          regDate: row.reg_date || '',
+          entryDate: row.entry_date || '',
+          discountDetails: [],
+          hasOasis: false,
+          paidStat: row.paid_stat || '00',
+          isNew: false
+        });
+      }
+      const car = carMap.get(carNo);
+      
+      const minutes = extractMinutesFromDcTime(row.dc_time);
+      car.totalDiscountTime += minutes;
+      
+      car.discountDetails.push({
+        discountName: row.discount_name || '',
+        discountTime: row.dc_time || '',
+        minutes: minutes,
+        registrant: row.account_no || '',
+        registrantName: row.name || '',
+        regDate: row.reg_date || '',
+        paidStat: row.paid_stat || '00'
+      });
+      
+      if (row.account_no === 'oasis_g') {
+        car.hasOasis = true;
+      }
+      
+      if (row.reg_date) car.regDate = row.reg_date;
+      if (row.entry_date) car.entryDate = row.entry_date;
+      if (row.paid_stat) car.paidStat = row.paid_stat;
+    }
+
+    const filteredCars = [];
+    for (const [carNo, car] of carMap) {
+      if (car.hasOasis) {
+        filteredCars.push(car);
+      }
+    }
+
+    const currentCarNos = new Set(filteredCars.map(car => car.carNo));
+    
+    let completedCars = await loadCompletedCars();
+    const validCompleted = completedCars.filter(car => !currentCarNos.has(car.carNo));
+    completedCars = validCompleted;
+
+    const savedParkingTimes = await loadAllParkingTimes();
+
+    const currentParkingTimes = {};
+    const detailedCars = [];
+    const now = new Date();
+    let hasChanges = false;
+    
+    for (const car of filteredCars) {
+      let parkingMinutes = 0;
+      let remainTime = 0;
+      let statusText = '미출차';
+      let statusClass = 'status-pending';
+      
+      if (car.paidStat !== '10') {
+        if (car.entryDate) {
+          const entry = parseDate(car.entryDate);
+          parkingMinutes = Math.floor((now - entry) / 60000);
+          currentParkingTimes[car.carNo] = parkingMinutes;
+        }
+        remainTime = Math.max(0, car.totalDiscountTime - parkingMinutes);
+        if (remainTime <= 0) {
+          statusText = '미출차 (초과)';
+          statusClass = 'status-overdue';
+        }
+      } else {
+        parkingMinutes = savedParkingTimes[car.carNo] || 0;
+        remainTime = 0;
+        statusText = '출차완료';
+        statusClass = 'status-complete';
+        
+        const exists = completedCars.some(c => c.carNo === car.carNo);
+        if (!exists) {
+          completedCars.push({
+            carNo: car.carNo,
+            parkingMinutes: parkingMinutes,
+            exitTime: new Date().toISOString(),
+            totalDiscountTime: car.totalDiscountTime,
+            discountDetails: car.discountDetails
+          });
+          hasChanges = true;
+        }
+      }
+      
+      detailedCars.push({
+        ...car,
+        parkingMinutes: parkingMinutes,
+        remainTime: remainTime,
+        statusText: statusText,
+        statusClass: statusClass,
+        totalDiscountTimeDisplay: formatTime(car.totalDiscountTime),
+        discountDetails: car.discountDetails
+      });
+    }
+
+    if (Object.keys(currentParkingTimes).length > 0) {
+      await saveAllParkingTimes(currentParkingTimes);
+    }
+
+    if (hasChanges) {
+      await saveCompletedCars(completedCars);
+    }
+
+    for (const completed of completedCars) {
+      if (!detailedCars.some(c => c.carNo === completed.carNo && c.paidStat === '10')) {
+        const isFiltered = filteredCars.some(c => c.carNo === completed.carNo);
+        if (isFiltered) {
+          detailedCars.push({
+            carNo: completed.carNo,
+            totalDiscountTime: completed.totalDiscountTime || 0,
+            regDate: '-',
+            entryDate: '-',
+            discountDetails: completed.discountDetails || [],
+            hasOasis: true,
+            paidStat: '10',
+            isNew: false,
+            parkingMinutes: completed.parkingMinutes || 0,
+            remainTime: 0,
+            statusText: '출차완료',
+            statusClass: 'status-complete',
+            totalDiscountTimeDisplay: formatTime(completed.totalDiscountTime || 0)
+          });
+        }
+      }
+    }
+
+    allCarsData = detailedCars;
+
+    detailedCars.sort((a, b) => {
+      if (a.paidStat === '10' && b.paidStat !== '10') return 1;
+      if (a.paidStat !== '10' && b.paidStat === '10') return -1;
+      if (a.regDate > b.regDate) return -1;
+      if (a.regDate < b.regDate) return 1;
+      return 0;
+    });
+    
+    document.getElementById('statTotal').textContent = detailedCars.length;
+    document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
+
+    renderTable(detailedCars);
+    
+  } catch (error) {
+    console.error('데이터 로드 실패:', error);
+    document.getElementById('tableBody').innerHTML = 
+      '<tr><td colspan="7" style="text-align:center;padding:40px;color:#ef4444;">⚠️ 데이터를 불러오지 못했습니다.</td></tr>';
+  }
+}
+
+function renderTable(data) {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  if (!data || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8;">📭 등록 내역이 없습니다.</td></tr>';
+    return;
+  }
+
+  data.forEach((row, idx) => {
+    const tr = document.createElement('tr');
+    let remainClass = '';
+    if (row.paidStat === '10') remainClass = '';
+    else if (row.remainTime <= 0) remainClass = 'highlight-red';
+    else if (row.remainTime <= 30) remainClass = 'highlight-orange';
+    else remainClass = 'highlight-green';
+    
+    const parkingDisplay = formatTime(row.parkingMinutes);
+    const remainDisplay = formatTime(row.remainTime);
+    const regDateDisplay = row.regDate ? fncDatetimeFormat(row.regDate) : '-';
+    
+    const hasDetails = row.discountDetails && row.discountDetails.length > 0;
+    const totalTimeDisplay = row.totalDiscountTime > 0 ? formatTime(row.totalDiscountTime) : '0분';
+    const discountDisplay = hasDetails 
+      ? `<span class="discount-detail-btn" onclick="showDiscountDetails('${row.carNo}')">${totalTimeDisplay} ▼</span>`
+      : (row.totalDiscountTime > 0 ? totalTimeDisplay : '-');
+
+    tr.innerHTML = `
+      <td>${idx + 1}</td>
+      <td><strong>${row.carNo}</strong></td>
+      <td>${regDateDisplay}</td>
+      <td>${parkingDisplay}</td>
+      <td>${discountDisplay}</td>
+      <td class="${remainClass}">${remainDisplay}</td>
+      <td><span class="${row.statusClass}">${row.statusText}</span></td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+}
+
+function showDiscountDetails(carNo) {
+  const car = allCarsData.find(c => c.carNo === carNo);
+  if (!car || !car.discountDetails || car.discountDetails.length === 0) {
+    showToast('알림', '할인내역이 없습니다.', 'warning');
+    return;
+  }
+
+  document.getElementById('detailModalTitle').textContent = `🚗 ${carNo} 할인내역`;
+  
+  let html = '<table>';
+  html += `<tr><th>할인명</th><th>등록자</th><th>등록시간</th><th>상태</th></tr>`;
+  
+  for (const detail of car.discountDetails) {
+    const status = detail.paidStat === '10' ? '출차완료' : '미출차';
+    const registrant = detail.registrantName || detail.registrant || '-';
+    html += `<tr>
+      <td>${detail.discountName || '-'}</td>
+      <td>${registrant}</td>
+      <td>${fncDatetimeFormat(detail.regDate)}</td>
+      <td>${status}</td>
+    </tr>`;
+  }
+  html += '</table>';
+  
+  html += `<div class="detail-total-time">💰 총 할인시간: ${formatTime(car.totalDiscountTime)}</div>`;
+  
+  document.getElementById('detailModalBody').innerHTML = html;
+  document.getElementById('detailModal').classList.add('show');
+}
+
+function closeDetailModal() {
+  document.getElementById('detailModal').classList.remove('show');
+}
+
+function formatTime(minutes) {
+  if (minutes <= 0) return '0분';
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  let result = '';
+  if (hours > 0) result += hours + '시간 ';
+  if (mins > 0) result += mins + '분';
+  return result.trim() || '0분';
+}
+
+function fncDatetimeFormat(dateStr) {
+  if (!dateStr) return '-';
+  const date = dateStr.substring(0, 8);
+  const time = dateStr.substring(8, 14);
+  return date.substring(0,4) + '-' + date.substring(4,6) + '-' + date.substring(6,8) + ' ' +
+         time.substring(0,2) + ':' + time.substring(2,4) + ':' + time.substring(4,6);
+}
+
+// ============================================================
+// ⚙️ 임계값 설정
+// ============================================================
+function openThresholdModal() {
+  document.getElementById('thresholdInput').value = THRESHOLD_AMOUNT;
+  document.getElementById('thresholdModal').classList.add('show');
+}
+function closeThresholdModal() {
+  document.getElementById('thresholdModal').classList.remove('show');
+}
+function saveThreshold() {
+  const val = parseInt(document.getElementById('thresholdInput').value);
+  if (val > 0) {
+    THRESHOLD_AMOUNT = val;
+    localStorage.setItem(STORAGE_KEY, val);
+    closeThresholdModal();
+    showToast('✅ 설정 완료', `잔액 알림 금액이 ${val.toLocaleString()}원으로 설정되었습니다.`, 'success');
+  } else {
+    alert('0보다 큰 금액을 입력해주세요.');
+  }
+}
+
+// ============================================================
 // 🔐 SHA-256
 // ============================================================
 function sha256(message) {
@@ -626,14 +1323,25 @@ function sha256(message) {
 }
 
 // ============================================================
+// ✅ 초기화
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+  loadSavedCredentials();
+});
+
+// ============================================================
 // ✅ window에 함수 노출
 // ============================================================
 window.handleLogin = handleLogin;
 window.handleLogout = handleLogout;
 window.handleSearch = handleSearch;
+window.fetchData = fetchData;
+window.showDiscountDetails = showDiscountDetails;
+window.closeDetailModal = closeDetailModal;
 window.openThresholdModal = openThresholdModal;
 window.closeThresholdModal = closeThresholdModal;
 window.saveThreshold = saveThreshold;
+window.refreshBalance = refreshBalance;
 </script>
 
 </body>
