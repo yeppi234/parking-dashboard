@@ -611,7 +611,6 @@
   <div class="modal-box" style="max-width:500px;">
     <h3>🚗 차량 상세 정보</h3>
     <div id="carDetailBody"></div>
-    <button class="modal-close" onclick="closeCarDetailModal()">닫기</button>
   </div>
 </div>
 
@@ -1303,7 +1302,7 @@ async function fetchDetailAndShowResult(id) {
 }
 
 // ============================================================
-// 📋 차량 상세 모달 (사진 + 등록 버튼)
+// 📋 차량 상세 모달 (사진 + 정보)
 // ============================================================
 function showCarDetailModal(data) {
   const modal = document.getElementById('carDetailModal');
@@ -1330,10 +1329,6 @@ function showCarDetailModal(data) {
     discountHtml = '<div class="detail-item">할인 내역 없음</div>';
   }
 
-  // 등록 버튼 비활성화 조건
-  const isRegistered = hasOasisRegistration;
-  const isRemainZero = remainTime <= 0;
-
   body.innerHTML = `
     <div style="text-align:center; margin-bottom:16px;">
       ${data.pictureUrl ? 
@@ -1355,28 +1350,15 @@ function showCarDetailModal(data) {
       <div style="font-size:12px; color:#888;">💰 할인내역</div>
       <div style="font-size:16px; font-weight:600; margin-top:4px;">${discountHtml}</div>
     </div>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
-      <div style="padding:10px; background:#f8fafc; border-radius:8px;">
-        <div style="font-size:12px; color:#888;">📋 기존할인</div>
-        <div style="font-size:16px; font-weight:600; margin-top:4px;">${formatTime(data.existingMinutes)}</div>
-      </div>
-      <div style="padding:10px; background:#f8fafc; border-radius:8px;">
-        <div style="font-size:12px; color:#888;">⏳ 출차여유시간</div>
-        <div style="font-size:16px; font-weight:700; margin-top:4px; ${remainTime <= 0 ? 'color:#dc2626;' : remainTime <= 30 ? 'color:#d97706;' : 'color:#16a34a;'}">
-          ${formatTime(remainTime)}
-        </div>
-      </div>
+    <div style="padding:10px; background:#f8fafc; border-radius:8px; margin-bottom:12px;">
+      <div style="font-size:12px; color:#888;">📋 기존할인</div>
+      <div style="font-size:16px; font-weight:600; margin-top:4px;">${formatTime(data.existingMinutes)}</div>
     </div>
-    <div style="padding:10px; border-radius:8px; margin-bottom:12px; ${isRegistered ? 'background:#fef2f2; border:1px solid #ef4444;' : 'background:#f0fdf4; border:1px solid #22c55e;'}">
-      <div style="font-size:12px; color:#888;">📌 등록 상태</div>
-      <div style="font-size:16px; font-weight:700; margin-top:4px; ${isRegistered ? 'color:#dc2626;' : 'color:#16a34a;'}">
-        ${isRegistered ? '⚠️ 이미 등록된 차량입니다' : '✅ 등록 가능한 차량입니다'}
-      </div>
-    </div>
+
     <div style="display:flex; gap:10px; margin-top:8px;">
       <button onclick="closeCarDetailModal()" style="flex:1; padding:12px; background:#e5e7eb; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer;">닫기</button>
-      <button onclick="handleRegister()" style="flex:2; padding:12px; background:${isRegistered || isRemainZero ? '#94a3b8' : '#22c55e'}; color:white; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:${isRegistered || isRemainZero ? 'not-allowed' : 'pointer'};" ${isRegistered || isRemainZero ? 'disabled' : ''}>
-        ${isRegistered ? '✅ 이미 등록됨' : isRemainZero ? '⏰ 시간 만료' : '📝 등록'}
+      <button onclick="handleRegister()" style="flex:2; padding:12px; background:${hasOasisRegistration ? '#94a3b8' : '#22c55e'}; color:white; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:${hasOasisRegistration ? 'not-allowed' : 'pointer'};" ${hasOasisRegistration ? 'disabled' : ''}>
+        ${hasOasisRegistration ? '✅ 이미 등록됨' : '📝 등록'}
       </button>
     </div>
   `;
