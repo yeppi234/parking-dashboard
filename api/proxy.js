@@ -11,9 +11,6 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // ============================================================
-  // ✅ URL 경로 정규화
-  // ============================================================
   const url = req.url || '';
   const path = url.replace(/^\/api\/proxy/, '').replace(/^\/api/, '');
   
@@ -28,7 +25,6 @@ export default async function handler(req, res) {
       const data = await kv.get('completedCars');
       return res.status(200).json({ data: data || [] });
     } catch (error) {
-      console.error('KV 조회 오류:', error);
       return res.status(500).json({ error: error.message });
     }
   }
@@ -39,7 +35,6 @@ export default async function handler(req, res) {
       await kv.set('completedCars', JSON.stringify(data), { ex: 86400 });
       return res.status(200).json({ success: true });
     } catch (error) {
-      console.error('KV 저장 오류:', error);
       return res.status(500).json({ error: error.message });
     }
   }
@@ -49,7 +44,6 @@ export default async function handler(req, res) {
       const data = await kv.get('parkingTimes');
       return res.status(200).json({ data: data || {} });
     } catch (error) {
-      console.error('주차시간 조회 오류:', error);
       return res.status(500).json({ error: error.message });
     }
   }
@@ -60,13 +54,12 @@ export default async function handler(req, res) {
       await kv.set('parkingTimes', JSON.stringify(data), { ex: 86400 });
       return res.status(200).json({ success: true });
     } catch (error) {
-      console.error('주차시간 저장 오류:', error);
       return res.status(500).json({ error: error.message });
     }
   }
 
   // ============================================================
-  // ✅ GET /discount/registration - 잔액 조회 (쿠키 유지)
+  // ✅ GET /discount/registration - 잔액 조회
   // ============================================================
   if (req.method === 'GET' && path === '/discount/registration') {
     try {
@@ -77,30 +70,23 @@ export default async function handler(req, res) {
         },
       });
       const html = await response.text();
-      
       const setCookie = response.headers.get('set-cookie');
-      if (setCookie) {
-        res.setHeader('Set-Cookie', setCookie);
-      }
-      
+      if (setCookie) res.setHeader('Set-Cookie', setCookie);
       res.status(response.status).send(html);
     } catch (error) {
-      console.error('❌ 잔액 조회 오류:', error);
       res.status(500).json({ error: error.message });
     }
     return;
   }
 
   // ============================================================
-  // ✅ POST 요청 - 실제 API 프록시 (쿠키 유지)
+  // ✅ POST 요청 - 실제 API 프록시
   // ============================================================
   if (req.method === 'POST') {
     try {
       const targetUrl = `https://a17574.parkingweb.kr${path}`;
       console.log('🔄 프록시 요청:', targetUrl);
-      console.log('📦 쿠키:', req.headers.cookie || '없음');
 
-      // 요청 본문 처리
       let body = req.body;
       if (!body) {
         body = '';
@@ -112,7 +98,6 @@ export default async function handler(req, res) {
         body = params.toString();
       }
 
-      // 실제 API 호출
       const response = await fetch(targetUrl, {
         method: 'POST',
         headers: {
@@ -124,35 +109,16 @@ export default async function handler(req, res) {
         body: body,
       });
 
-      // 응답 처리
       const responseData = await response.text();
-      
-      // 쿠키 전달
       const setCookie = response.headers.get('set-cookie');
-      if (setCookie) {
-        res.setHeader('Set-Cookie', setCookie);
-      }
+      if (setCookie) res.setHeader('Set-Cookie', setCookie);
 
       res.status(response.status).send(responseData);
-      
     } catch (error) {
       console.error('❌ 프록시 오류:', error);
-      res.status(500).json({ 
-        error: 'Proxy Error', 
-        message: error.message,
-        timestamp: new Date().toISOString()
-      });
+      res.status(500).json({ error: error.message });
     }
     return;
-  }
-
-  // GET 요청 - 상태 확인
-  if (req.method === 'GET') {
-    return res.status(200).json({ 
-      status: 'ok', 
-      message: 'Proxy is running',
-      timestamp: new Date().toISOString()
-    });
   }
 
   res.status(405).json({ error: 'Method Not Allowed' });
