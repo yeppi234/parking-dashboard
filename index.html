@@ -552,7 +552,7 @@
     <div class="login-error" id="loginError">❌ 아이디 또는 비밀번호가 올바르지 않습니다.</div>
     <div class="login-success" id="loginSuccess">✅ 로그인 성공! 잠시 후 대시보드로 이동합니다.</div>
     <input type="text" id="loginId" placeholder="아이디를 입력하세요">
-    <input type="password" id="loginPw" placeholder="비밀번호를 입력하세요" onkeypress="if(event.key==='Enter') handleLogin()">
+    <input type="password" id="loginPw" inputmode="text" placeholder="비밀번호를 입력하세요" onkeypress="if(event.key==='Enter') handleLogin()">
     <div class="remember-me">
       <input type="checkbox" id="rememberMe" checked>
       <label for="rememberMe">로그인 정보 저장</label>
