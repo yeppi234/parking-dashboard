@@ -1,13 +1,13 @@
 import { kv } from '@vercel/kv';
 
 export default async function handler(req, res) {
-  // ✅ CORS 헤더 (credentials 허용)
-  res.setHeader('Access-Control-Allow-Origin', 'https://parkings-dashboard.vercel.app');
+  // ✅ CORS 헤더 (모든 출처 허용 - 테스트용)
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Cookie, X-Requested-With');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');  // ✅ 추가!
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
 
-  // OPTIONS 요청 처리
+  // OPTIONS 요청 처리 (프리플라이트)
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -71,13 +71,8 @@ export default async function handler(req, res) {
         },
       });
       const html = await response.text();
-      
-      // ✅ 쿠키 전달
       const setCookie = response.headers.get('set-cookie');
-      if (setCookie) {
-        res.setHeader('Set-Cookie', setCookie);
-      }
-      
+      if (setCookie) res.setHeader('Set-Cookie', setCookie);
       res.status(response.status).send(html);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -117,8 +112,6 @@ export default async function handler(req, res) {
       });
 
       const responseData = await response.text();
-      
-      // ✅ 쿠키 전달
       const setCookie = response.headers.get('set-cookie');
       if (setCookie) {
         res.setHeader('Set-Cookie', setCookie);
