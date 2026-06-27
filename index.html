@@ -694,6 +694,7 @@ let sessionId = '';
 let currentBalance = 0;
 let allCarsData = [];
 let refreshInterval = null;
+let parkingData = null;
 
 // ============================================================
 // 💾 저장된 로그인 정보
@@ -780,11 +781,10 @@ function sha256(message) {
   function toHex(num){return ('00000000'+(num>>>0).toString(16)).slice(-8);}
   return toHex(h0)+toHex(h1)+toHex(h2)+toHex(h3)+toHex(h4)+toHex(h5)+toHex(h6)+toHex(h7);
 }
-// ✅ window에 노출 (콘솔에서 접근 가능)
 window.sha256 = sha256;
 
 // ============================================================
-// 🔐 로그인 (하드코딩 제거, 자동로그인 유지)
+// 🔐 로그인
 // ============================================================
 async function handleLogin() {
   const id = document.getElementById('loginId').value.trim();
@@ -922,6 +922,7 @@ function handleLogout() {
   document.getElementById('loginError').style.display = 'none';
   sessionId = '';
   currentBalance = 0;
+  parkingData = null;
   document.cookie = 'JSESSIONID=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
   if (refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; }
 }
@@ -935,6 +936,61 @@ function updateBalanceDisplay(balance) {
     else if (balance < THRESHOLD_AMOUNT) el.classList.add('warning');
     else el.classList.add('success');
   }
+}
+
+// ============================================================
+// 🔧 시간 파싱
+// ============================================================
+function parseParkingTime(timeStr) {
+  if (!timeStr) return { hours: 0, minutes: 0 };
+  let hours = 0, minutes = 0, days = 0;
+
+  if (timeStr.includes('일')) {
+    const dayMatch = timeStr.match(/(\d+)일/);
+    if (dayMatch) days = parseInt(dayMatch[1], 10);
+  }
+  if (timeStr.includes('시간')) {
+    const hourMatch = timeStr.match(/(\d+)시간/);
+    if (hourMatch) hours = parseInt(hourMatch[1], 10);
+  }
+  if (timeStr.includes('분')) {
+    const minMatch = timeStr.match(/(\d+)분/);
+    if (minMatch) minutes = parseInt(minMatch[1], 10);
+  }
+  if (timeStr.includes(':')) {
+    const parts = timeStr.split(':');
+    hours = parseInt(parts[0], 10) || 0;
+    minutes = parseInt(parts[1], 10) || 0;
+  }
+  return { hours: hours + days * 24, minutes };
+}
+
+function calculateTotalParkingTime(timeStr) {
+  const { hours, minutes } = parseParkingTime(timeStr);
+  return hours * 60 + minutes;
+}
+
+function calculateFinalParkingTime(timeStr) {
+  let totalMinutes = calculateTotalParkingTime(timeStr) + 30;
+  return Math.min(totalMinutes, 600);
+}
+
+function formatTime(minutes) {
+  if (minutes <= 0) return '0분';
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  let result = '';
+  if (hours > 0) result += hours + '시간 ';
+  if (mins > 0) result += mins + '분';
+  return result.trim() || '0분';
+}
+
+function fncDatetimeFormat(dateStr) {
+  if (!dateStr) return '-';
+  const date = dateStr.substring(0, 8);
+  const time = dateStr.substring(8, 14);
+  return date.substring(0,4) + '-' + date.substring(4,6) + '-' + date.substring(6,8) + ' ' +
+         time.substring(0,2) + ':' + time.substring(2,4) + ':' + time.substring(4,6);
 }
 
 // ============================================================
@@ -965,6 +1021,67 @@ function parseDate(dateStr) {
     parseInt(dateStr.substring(10, 12)) || 0,
     parseInt(dateStr.substring(12, 14)) || 0
   );
+}
+
+// ============================================================
+// ✅ 할인 선택 로직
+// ============================================================
+function selectDiscountType(totalMinutes, discountList) {
+  if (!discountList || discountList.length === 0) return ['20'];
+  const available = discountList.filter(d => d.id !== '14').sort((a, b) => parseInt(a.discount_value) - parseInt(b.discount_value));
+  const needComboTimes = [180, 300, 330, 390, 420, 540];
+  
+  if (!needComboTimes.includes(totalMinutes)) {
+    for (const d of available) {
+      if (parseInt(d.discount_value) >= totalMinutes) return [d.id];
+    }
+    return ['16'];
+  }
+  
+  const combinable = available.filter(d => d.id === '20' || d.id === '21');
+  const single = available.filter(d => d.id !== '20' && d.id !== '21');
+  let bestCombo = null;
+  let bestOver = Infinity;
+  
+  for (const d of available) {
+    if (parseInt(d.discount_value) >= totalMinutes && parseInt(d.discount_value) < bestOver) {
+      bestOver = parseInt(d.discount_value);
+      bestCombo = [d.id];
+    }
+  }
+  
+  const oneHour = combinable.find(d => d.id === '20');
+  const twoHour = combinable.find(d => d.id === '21');
+  
+  if (oneHour) {
+    for (const d of single) {
+      const sum = parseInt(oneHour.discount_value) + parseInt(d.discount_value);
+      if (sum >= totalMinutes && sum - totalMinutes < bestOver) {
+        bestOver = sum - totalMinutes;
+        bestCombo = ['20', d.id];
+      }
+    }
+  }
+  
+  if (twoHour) {
+    for (const d of single) {
+      const sum = parseInt(twoHour.discount_value) + parseInt(d.discount_value);
+      if (sum >= totalMinutes && sum - totalMinutes < bestOver) {
+        bestOver = sum - totalMinutes;
+        bestCombo = ['21', d.id];
+      }
+    }
+  }
+  
+  if (oneHour && twoHour && parseInt(oneHour.discount_value) + parseInt(twoHour.discount_value) >= totalMinutes) {
+    const over = parseInt(oneHour.discount_value) + parseInt(twoHour.discount_value) - totalMinutes;
+    if (over < bestOver) {
+      bestOver = over;
+      bestCombo = ['20', '21'];
+    }
+  }
+  
+  return bestCombo || ['20'];
 }
 
 // ============================================================
@@ -1150,7 +1267,6 @@ async function fetchDetailAndShowResult(id) {
     const existingMinutes = parkVisitCar.reduce((sum, item) => sum + (parseFloat(item.dc_time) || 0), 0);
     const data = detail.parkEntry;
     
-    // ✅ 사진 URL
     const picturePath = data.acEntrancePicName || '';
     const pictureUrl = picturePath.startsWith('http') ? picturePath : `https://a17574.parkingweb.kr/image${picturePath}`;
     
@@ -1165,15 +1281,18 @@ async function fetchDetailAndShowResult(id) {
     if (minutes > 0) formattedTime += `${minutes}분`;
     if (!formattedTime) formattedTime = '0분';
 
-    // ✅ 모달에 사진과 정보 표시
-    showCarDetailModal({
+    parkingData = {
+      id: data.iID,
       carNo: data.acPlate1,
-      parkingTime: formattedTime,
+      differentTime: formattedTime,
+      originalTime: data.different_time,
       pictureUrl: pictureUrl,
       discountList: discountList,
       existingMinutes: existingMinutes,
       parkVisitCar: parkVisitCar
-    });
+    };
+
+    showCarDetailModal(parkingData);
 
   } catch (error) {
     console.error('상세 조회 오류:', error);
@@ -1184,11 +1303,22 @@ async function fetchDetailAndShowResult(id) {
 }
 
 // ============================================================
-// 📋 차량 상세 모달 (사진 + 정보)
+// 📋 차량 상세 모달 (사진 + 등록 버튼)
 // ============================================================
 function showCarDetailModal(data) {
   const modal = document.getElementById('carDetailModal');
   const body = document.getElementById('carDetailBody');
+  
+  // 기존 등록 여부 확인
+  const hasOasisRegistration = data.parkVisitCar?.some(item => {
+    const account = item.account_no || '';
+    const name = item.name || '';
+    return account.includes('oasis') || name.includes('oasis');
+  });
+
+  // 남은 시간 계산
+  const totalMinutes = calculateTotalParkingTime(data.originalTime);
+  const remainTime = Math.max(0, totalMinutes + 30 - data.existingMinutes);
   
   // 할인내역 리스트
   let discountHtml = '';
@@ -1200,18 +1330,15 @@ function showCarDetailModal(data) {
     discountHtml = '<div class="detail-item">할인 내역 없음</div>';
   }
 
-  // 기존 등록 여부 확인
-  const hasOasisRegistration = data.parkVisitCar?.some(item => {
-    const account = item.account_no || '';
-    const name = item.name || '';
-    return account.includes('oasis') || name.includes('oasis');
-  });
+  // 등록 버튼 비활성화 조건
+  const isRegistered = hasOasisRegistration;
+  const isRemainZero = remainTime <= 0;
 
   body.innerHTML = `
     <div style="text-align:center; margin-bottom:16px;">
       ${data.pictureUrl ? 
-        `<img src="${data.pictureUrl}" style="width:100%; max-height:300px; border-radius:8px; object-fit:cover;" onerror="this.style.display='none'">` :
-        `<div style="padding:40px; background:#f0f0f0; border-radius:8px;">📷 입차 사진 없음</div>`
+        `<img src="${data.pictureUrl}" style="width:100%; max-height:200px; border-radius:8px; object-fit:cover;" onerror="this.style.display='none'">` :
+        `<div style="padding:30px; background:#f0f0f0; border-radius:8px;">📷 입차 사진 없음</div>`
       }
     </div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
@@ -1221,22 +1348,36 @@ function showCarDetailModal(data) {
       </div>
       <div style="padding:10px; background:#f8fafc; border-radius:8px;">
         <div style="font-size:12px; color:#888;">⏱️ 주차시간</div>
-        <div style="font-size:20px; font-weight:700;">${data.parkingTime}</div>
+        <div style="font-size:20px; font-weight:700;">${data.differentTime}</div>
       </div>
     </div>
     <div style="padding:10px; background:#f8fafc; border-radius:8px; margin-bottom:12px;">
       <div style="font-size:12px; color:#888;">💰 할인내역</div>
       <div style="font-size:16px; font-weight:600; margin-top:4px;">${discountHtml}</div>
     </div>
-    <div style="padding:10px; background:#f8fafc; border-radius:8px; margin-bottom:12px;">
-      <div style="font-size:12px; color:#888;">📋 기존할인 시간</div>
-      <div style="font-size:16px; font-weight:600; margin-top:4px;">${formatTime(data.existingMinutes)}</div>
-    </div>
-    <div style="padding:10px; border-radius:8px; margin-bottom:12px; ${hasOasisRegistration ? 'background:#fef2f2; border:1px solid #ef4444;' : 'background:#f0fdf4; border:1px solid #22c55e;'}">
-      <div style="font-size:12px; color:#888;">📌 등록 상태</div>
-      <div style="font-size:16px; font-weight:700; margin-top:4px; ${hasOasisRegistration ? 'color:#dc2626;' : 'color:#16a34a;'}">
-        ${hasOasisRegistration ? '⚠️ 이미 등록된 차량입니다' : '✅ 등록 가능한 차량입니다'}
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+      <div style="padding:10px; background:#f8fafc; border-radius:8px;">
+        <div style="font-size:12px; color:#888;">📋 기존할인</div>
+        <div style="font-size:16px; font-weight:600; margin-top:4px;">${formatTime(data.existingMinutes)}</div>
       </div>
+      <div style="padding:10px; background:#f8fafc; border-radius:8px;">
+        <div style="font-size:12px; color:#888;">⏳ 출차여유시간</div>
+        <div style="font-size:16px; font-weight:700; margin-top:4px; ${remainTime <= 0 ? 'color:#dc2626;' : remainTime <= 30 ? 'color:#d97706;' : 'color:#16a34a;'}">
+          ${formatTime(remainTime)}
+        </div>
+      </div>
+    </div>
+    <div style="padding:10px; border-radius:8px; margin-bottom:12px; ${isRegistered ? 'background:#fef2f2; border:1px solid #ef4444;' : 'background:#f0fdf4; border:1px solid #22c55e;'}">
+      <div style="font-size:12px; color:#888;">📌 등록 상태</div>
+      <div style="font-size:16px; font-weight:700; margin-top:4px; ${isRegistered ? 'color:#dc2626;' : 'color:#16a34a;'}">
+        ${isRegistered ? '⚠️ 이미 등록된 차량입니다' : '✅ 등록 가능한 차량입니다'}
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:8px;">
+      <button onclick="closeCarDetailModal()" style="flex:1; padding:12px; background:#e5e7eb; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer;">닫기</button>
+      <button onclick="handleRegister()" style="flex:2; padding:12px; background:${isRegistered || isRemainZero ? '#94a3b8' : '#22c55e'}; color:white; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:${isRegistered || isRemainZero ? 'not-allowed' : 'pointer'};" ${isRegistered || isRemainZero ? 'disabled' : ''}>
+        ${isRegistered ? '✅ 이미 등록됨' : isRemainZero ? '⏰ 시간 만료' : '📝 등록'}
+      </button>
     </div>
   `;
   
@@ -1245,6 +1386,110 @@ function showCarDetailModal(data) {
 
 function closeCarDetailModal() {
   document.getElementById('carDetailModal').classList.remove('show');
+}
+
+// ============================================================
+// 📝 주차등록
+// ============================================================
+async function handleRegister() {
+  if (!parkingData) {
+    showToast('⚠️ 안내', '먼저 차량을 조회해주세요', 'warning');
+    return;
+  }
+
+  // 이미 등록된 차량인지 확인
+  const hasOasisRegistration = parkingData.parkVisitCar?.some((item) => {
+    const account = item.account_no || '';
+    const name = item.name || '';
+    return account.includes('oasis') || name.includes('oasis');
+  });
+
+  if (hasOasisRegistration) {
+    showToast('⚠️ 안내', '이미 등록된 차량입니다', 'warning');
+    return;
+  }
+
+  // 남은 시간 계산
+  const totalMinutesWithGrace = calculateFinalParkingTime(parkingData.originalTime);
+  const roundedMinutes = Math.ceil(totalMinutesWithGrace / 30) * 30;
+  const remainingMinutes = roundedMinutes - parkingData.existingMinutes;
+
+  if (remainingMinutes <= 0) {
+    showToast('✅ 주차 등록 완료', '30분 내로 출차 해주세요', 'success');
+    closeCarDetailModal();
+    fetchData();
+    return;
+  }
+
+  document.getElementById('loadingOverlay').classList.add('show');
+  document.getElementById('loadingText').textContent = '등록 중...';
+
+  try {
+    // 할인 유형 선택
+    const discountIds = selectDiscountType(remainingMinutes, parkingData.discountList);
+    if (!discountIds || discountIds.length === 0) {
+      showToast('❌ 오류', '선택된 할인이 없습니다', 'danger');
+      document.getElementById('loadingOverlay').classList.remove('show');
+      return;
+    }
+
+    // 할인 등록 실행
+    for (const discountId of discountIds) {
+      const response = await fetch(`${PROXY_BASE}/discount/registration/save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'include',
+        body: new URLSearchParams({
+          peId: parkingData.id,
+          carNo: parkingData.carNo,
+          discountType: discountId,
+          saveCnt: '1',
+          memo: ''
+        })
+      });
+
+      if (response.status === 403 || response.status === 401) {
+        handleLogout();
+        showToast('⚠️ 세션 만료', '다시 로그인해주세요', 'danger');
+        document.getElementById('loadingOverlay').classList.remove('show');
+        return;
+      }
+
+      const result = await response.text();
+      if (result.includes('<!DOCTYPE')) {
+        showToast('⚠️ 세션 만료', '로그인 세션이 만료되었습니다', 'danger');
+        document.getElementById('loadingOverlay').classList.remove('show');
+        return;
+      }
+    }
+
+    // 등록 성공 메시지
+    const baseTime = calculateTotalParkingTime(parkingData.originalTime);
+    const maxRegisteredTime = Math.min(baseTime + 30, 600);
+    const remainTime = maxRegisteredTime - baseTime;
+
+    closeCarDetailModal();
+
+    if (baseTime > 600) {
+      const extraMinutes = baseTime - 600;
+      showToast('⚠️ 10시간 초과!', `${extraMinutes}분 초과하여 추가요금이 발생합니다`, 'danger');
+    } else if (remainTime <= 30 && remainTime > 0) {
+      showToast('✅ 주차 등록 완료', `${remainTime}분 내로 출차 해주세요`, 'success');
+    } else {
+      showToast('✅ 주차 등록 완료', '30분 내로 출차 해주세요', 'success');
+    }
+
+    fetchData();
+
+  } catch (error) {
+    console.error('등록 오류:', error);
+    showToast('❌ 등록 실패', error.message || '등록 중 오류가 발생했습니다', 'danger');
+  } finally {
+    document.getElementById('loadingOverlay').classList.remove('show');
+  }
 }
 
 // ============================================================
@@ -1520,24 +1765,6 @@ function closeDetailModal() {
   document.getElementById('detailModal').classList.remove('show');
 }
 
-function formatTime(minutes) {
-  if (minutes <= 0) return '0분';
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  let result = '';
-  if (hours > 0) result += hours + '시간 ';
-  if (mins > 0) result += mins + '분';
-  return result.trim() || '0분';
-}
-
-function fncDatetimeFormat(dateStr) {
-  if (!dateStr) return '-';
-  const date = dateStr.substring(0, 8);
-  const time = dateStr.substring(8, 14);
-  return date.substring(0,4) + '-' + date.substring(4,6) + '-' + date.substring(6,8) + ' ' +
-         time.substring(0,2) + ':' + time.substring(2,4) + ':' + time.substring(4,6);
-}
-
 // ============================================================
 // ⚙️ 임계값 설정
 // ============================================================
@@ -1573,6 +1800,7 @@ document.addEventListener('DOMContentLoaded', function() {
 window.handleLogin = handleLogin;
 window.handleLogout = handleLogout;
 window.handleSearch = handleSearch;
+window.handleRegister = handleRegister;
 window.fetchData = fetchData;
 window.showDiscountDetails = showDiscountDetails;
 window.closeDetailModal = closeDetailModal;
