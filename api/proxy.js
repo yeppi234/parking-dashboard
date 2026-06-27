@@ -1,10 +1,11 @@
 import { kv } from '@vercel/kv';
 
 export default async function handler(req, res) {
-  // CORS 헤더 설정
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // ✅ CORS 헤더 (credentials 허용)
+  res.setHeader('Access-Control-Allow-Origin', 'https://parkings-dashboard.vercel.app');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Cookie, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');  // ✅ 추가!
 
   // OPTIONS 요청 처리
   if (req.method === 'OPTIONS') {
@@ -70,8 +71,13 @@ export default async function handler(req, res) {
         },
       });
       const html = await response.text();
+      
+      // ✅ 쿠키 전달
       const setCookie = response.headers.get('set-cookie');
-      if (setCookie) res.setHeader('Set-Cookie', setCookie);
+      if (setCookie) {
+        res.setHeader('Set-Cookie', setCookie);
+      }
+      
       res.status(response.status).send(html);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -86,6 +92,7 @@ export default async function handler(req, res) {
     try {
       const targetUrl = `https://a17574.parkingweb.kr${path}`;
       console.log('🔄 프록시 요청:', targetUrl);
+      console.log('📦 쿠키:', req.headers.cookie || '없음');
 
       let body = req.body;
       if (!body) {
@@ -110,8 +117,12 @@ export default async function handler(req, res) {
       });
 
       const responseData = await response.text();
+      
+      // ✅ 쿠키 전달
       const setCookie = response.headers.get('set-cookie');
-      if (setCookie) res.setHeader('Set-Cookie', setCookie);
+      if (setCookie) {
+        res.setHeader('Set-Cookie', setCookie);
+      }
 
       res.status(response.status).send(responseData);
     } catch (error) {
