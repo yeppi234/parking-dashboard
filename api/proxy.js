@@ -12,16 +12,18 @@ export default async function handler(req, res) {
   }
 
   // ============================================================
-  // ✅ URL 경로 정규화
+  // ✅ URL 경로 정규화 (HTML에서 호출하는 경로 그대로)
   // ============================================================
   const url = req.url || '';
+  // /api/proxy/login → /login
+  // /api/proxy/kv → /kv
   const path = url.replace(/^\/api\/proxy/, '').replace(/^\/api/, '');
   
   console.log('📌 요청 URL:', url);
   console.log('📌 정규화된 경로:', path);
 
   // ============================================================
-  // ✅ KV API: 출차 완료 차량 목록 조회
+  // ✅ KV API: 출차 완료 차량 목록 조회 (GET /kv)
   // ============================================================
   if (req.method === 'GET' && path === '/kv') {
     try {
@@ -34,7 +36,7 @@ export default async function handler(req, res) {
   }
 
   // ============================================================
-  // ✅ KV API: 출차 완료 차량 목록 저장
+  // ✅ KV API: 출차 완료 차량 목록 저장 (POST /kv)
   // ============================================================
   if (req.method === 'POST' && path === '/kv') {
     try {
@@ -48,7 +50,7 @@ export default async function handler(req, res) {
   }
 
   // ============================================================
-  // ✅ KV API: 모든 차량 주차시간 조회
+  // ✅ KV API: 모든 차량 주차시간 조회 (GET /kv/parking/all)
   // ============================================================
   if (req.method === 'GET' && path === '/kv/parking/all') {
     try {
@@ -61,7 +63,7 @@ export default async function handler(req, res) {
   }
 
   // ============================================================
-  // ✅ KV API: 모든 차량 주차시간 저장
+  // ✅ KV API: 모든 차량 주차시간 저장 (POST /kv/parking/all)
   // ============================================================
   if (req.method === 'POST' && path === '/kv/parking/all') {
     try {
@@ -75,22 +77,38 @@ export default async function handler(req, res) {
   }
 
   // ============================================================
-  // ✅ GET 요청: 상태 확인
+  // ✅ GET /discount/registration: 잔액 페이지 (HTML 반환)
   // ============================================================
-  if (req.method === 'GET' && path === '/') {
-    return res.status(200).json({ 
-      status: 'ok', 
-      message: 'Proxy is running',
-      timestamp: new Date().toISOString()
-    });
+  if (req.method === 'GET' && path === '/discount/registration') {
+    try {
+      const response = await fetch('https://a17574.parkingweb.kr/discount/registration', {
+        headers: {
+          'Cookie': req.headers.cookie || '',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+      });
+      const html = await response.text();
+      
+      // 쿠키 전달
+      const setCookie = response.headers.get('set-cookie');
+      if (setCookie) {
+        res.setHeader('Set-Cookie', setCookie);
+      }
+      
+      res.status(response.status).send(html);
+    } catch (error) {
+      console.error('❌ 잔액 조회 오류:', error);
+      res.status(500).json({ error: error.message });
+    }
+    return;
   }
 
   // ============================================================
-  // ✅ POST 요청: 실제 API 프록시
+  // ✅ POST 요청: 실제 API 프록시 (로그인, 할인등록 등)
   // ============================================================
   if (req.method === 'POST') {
     try {
-      // 실제 API 경로로 변환 (로그인, 할인등록 등)
+      // 실제 API 경로
       const targetUrl = `https://a17574.parkingweb.kr${path}`;
       console.log('🔄 프록시 요청:', targetUrl);
       console.log('📦 요청 본문:', req.body);
