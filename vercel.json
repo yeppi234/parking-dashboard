@@ -13,12 +13,16 @@
   ],
   "routes": [
     {
+      "src": "/api/proxy/login",
+      "dest": "/api/proxy.js"
+    },
+    {
       "src": "/api/proxy/(.*)",
-      "dest": "/api/proxy"
+      "dest": "/api/proxy.js"
     },
     {
       "src": "/api/(.*)",
-      "dest": "/api/proxy"
+      "dest": "/api/proxy.js"
     },
     {
       "src": "/(.*)",
