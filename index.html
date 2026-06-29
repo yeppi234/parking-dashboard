@@ -1530,7 +1530,7 @@ function showCarDetailModal(data, memoData) {
         ${timeDisplay ? `<span class="memo-time">${timeDisplay}</span>` : ''}
       </div>
       <div class="memo-input-row">
-        <input type="text" id="memoInput" value="${memoText}" placeholder="차량 메모를 입력하세요 (Vercel KV 저장)">
+        <input type="text" id="memoInput" value="${memoText}" placeholder="차량 메모를 입력하세요">
         <button class="btn-save-memo" onclick="saveMemo('${data.carNo}')">저장</button>
         ${memoText ? `<button class="btn-delete-memo" onclick="deleteMemo('${data.carNo}')">삭제</button>` : ''}
       </div>
