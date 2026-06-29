@@ -1508,7 +1508,7 @@ async function handleRegister() {
   const remainingMinutes = roundedMinutes - parkingData.existingMinutes;
 
   if (remainingMinutes <= 0) {
-    showToast('✅ 주차 등록 완료', '30분 내로 출차 해주세요', 'success');
+    showToast('✅ 주차 등록 완료','success');
     closeCarDetailModal();
     fetchData();
     return;
