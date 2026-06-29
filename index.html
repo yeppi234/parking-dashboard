@@ -1470,7 +1470,7 @@ async function handleDeleteDiscount(tckttrns_id, idno) {
     console.log('🗑️ 삭제 응답:', result);
 
     closeCarDetailModal();
-    showToast('✅ 삭제 완료', '할인내역이 삭제되었습니다.', 'success');
+    showToast('✅ 안내', '할인내역이 삭제되었습니다.', 'success');
     fetchData();
 
   } catch (error) {
