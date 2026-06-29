@@ -21,10 +21,44 @@ export default async function handler(req, res) {
   console.log('📌 메서드:', req.method);
 
   // ============================================================
-  // ✅ 메모 API (Vercel KV) - 먼저 처리!
+  // ✅ 잔액 임계값 API (Vercel KV)
   // ============================================================
 
-  // 메모 조회 (GET) - path에 memo가 포함되어 있으면 처리
+  // 임계값 조회 (GET)
+  if (req.method === 'GET' && path === '/threshold') {
+    try {
+      const data = await kv.get('threshold_amount');
+      const amount = data ? parseInt(data) : 10000;
+      console.log('📌 임계값 조회 결과:', amount);
+      return res.status(200).json({ amount: amount });
+    } catch (error) {
+      console.error('❌ 임계값 조회 오류:', error);
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  // 임계값 저장 (POST)
+  if (req.method === 'POST' && path === '/threshold') {
+    try {
+      const { amount } = req.body;
+      console.log('📌 임계값 저장 요청:', amount);
+      if (!amount || amount < 0) {
+        return res.status(400).json({ error: '올바른 금액을 입력해주세요.' });
+      }
+      await kv.set('threshold_amount', amount);
+      console.log('✅ 임계값 저장 완료:', amount);
+      return res.status(200).json({ success: true, amount: amount });
+    } catch (error) {
+      console.error('❌ 임계값 저장 오류:', error);
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  // ============================================================
+  // ✅ 메모 API (Vercel KV)
+  // ============================================================
+
+  // 메모 조회 (GET)
   if (req.method === 'GET' && path.includes('memo')) {
     try {
       const carNo = decodeURIComponent(url.split('?').find(q => q.includes('carNo='))?.split('=')[1] || '');
@@ -35,7 +69,6 @@ export default async function handler(req, res) {
       const data = await kv.get(`memo:${carNo}`);
       console.log('📌 KV 조회 결과 (raw):', data);
       
-      // ✅ data가 이미 객체인 경우 처리
       let parsedData = null;
       if (data) {
         try {
@@ -52,7 +85,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // 메모 저장 (POST) - path에 memo가 포함되어 있으면 처리
+  // 메모 저장 (POST)
   if (req.method === 'POST' && path.includes('memo')) {
     try {
       const { carNo, memo } = req.body;
@@ -65,11 +98,9 @@ export default async function handler(req, res) {
         updatedAt: new Date().toISOString()
       };
       
-      // 저장
       await kv.set(`memo:${carNo}`, JSON.stringify(memoData));
       console.log('✅ 메모 저장 완료');
       
-      // 저장 후 바로 읽어서 확인
       const saved = await kv.get(`memo:${carNo}`);
       console.log('📌 저장 후 확인:', saved);
       
@@ -84,7 +115,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // 메모 삭제 (DELETE) - path에 memo가 포함되어 있으면 처리
+  // 메모 삭제 (DELETE)
   if (req.method === 'DELETE' && path.includes('memo')) {
     try {
       const carNo = decodeURIComponent(url.split('?').find(q => q.includes('carNo='))?.split('=')[1] || '');
