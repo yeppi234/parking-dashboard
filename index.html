@@ -1254,9 +1254,21 @@ async function loadAllParkingTimes() {
 // ============================================================
 // 📝 차량 메모 관리 (Vercel KV)
 // ============================================================
+async function getCarMemo(carNo) {
+  try {
+    const response = await fetch(`/api/memo?carNo=${encodeURIComponent(carNo)}`, {
+      credentials: 'include'
+    });
+    const result = await response.json();
+    return result.data || null;
+  } catch (e) {
+    console.error('메모 조회 실패:', e);
+    return null;
+  }
+}
 async function saveCarMemo(carNo, memo) {
   try {
-    const response = await fetch(`${PROXY_BASE}/memo`, {
+    const response = await fetch(`/api/memo`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -1269,23 +1281,9 @@ async function saveCarMemo(carNo, memo) {
     return false;
   }
 }
-
-async function getCarMemo(carNo) {
-  try {
-    const response = await fetch(`${PROXY_BASE}/memo?carNo=${encodeURIComponent(carNo)}`, {
-      credentials: 'include'
-    });
-    const result = await response.json();
-    return result.data || null;
-  } catch (e) {
-    console.error('메모 조회 실패:', e);
-    return null;
-  }
-}
-
 async function deleteCarMemo(carNo) {
   try {
-    const response = await fetch(`${PROXY_BASE}/memo?carNo=${encodeURIComponent(carNo)}`, {
+    const response = await fetch(`/api/memo?carNo=${encodeURIComponent(carNo)}`, {
       method: 'DELETE',
       credentials: 'include'
     });
@@ -1296,7 +1294,7 @@ async function deleteCarMemo(carNo) {
     return false;
   }
 }
-
+  
 // ============================================================
 // 🔍 차량 검색
 // ============================================================
