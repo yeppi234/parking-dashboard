@@ -27,14 +27,13 @@ export default async function handler(req, res) {
   // 메모 조회 (GET) - path에 memo가 포함되어 있으면 처리
   if (req.method === 'GET' && path.includes('memo')) {
     try {
-      const carNo = url.split('?').find(q => q.includes('carNo='))?.split('=')[1] || '';
+      const carNo = decodeURIComponent(url.split('?').find(q => q.includes('carNo='))?.split('=')[1] || '');
       console.log('📌 메모 조회 - 차량번호:', carNo);
       if (!carNo) {
         return res.status(400).json({ error: 'carNo 파라미터가 필요합니다.' });
       }
       const data = await kv.get(`memo:${carNo}`);
       console.log('📌 KV 조회 결과:', data);
-      // ✅ JSON 파싱 추가
       const parsedData = data ? JSON.parse(data) : null;
       return res.status(200).json({ data: parsedData });
     } catch (error) {
@@ -55,9 +54,20 @@ export default async function handler(req, res) {
         memo: memo.trim(),
         updatedAt: new Date().toISOString()
       };
+      
+      // 저장
       await kv.set(`memo:${carNo}`, JSON.stringify(memoData));
       console.log('✅ 메모 저장 완료');
-      return res.status(200).json({ success: true });
+      
+      // 저장 후 바로 읽어서 확인
+      const saved = await kv.get(`memo:${carNo}`);
+      console.log('📌 저장 후 확인:', saved);
+      
+      return res.status(200).json({ 
+        success: true, 
+        saved: saved,
+        key: `memo:${carNo}`
+      });
     } catch (error) {
       console.error('❌ 메모 저장 오류:', error);
       return res.status(500).json({ error: error.message });
@@ -67,7 +77,7 @@ export default async function handler(req, res) {
   // 메모 삭제 (DELETE) - path에 memo가 포함되어 있으면 처리
   if (req.method === 'DELETE' && path.includes('memo')) {
     try {
-      const carNo = url.split('?').find(q => q.includes('carNo='))?.split('=')[1] || '';
+      const carNo = decodeURIComponent(url.split('?').find(q => q.includes('carNo='))?.split('=')[1] || '');
       if (!carNo) {
         return res.status(400).json({ error: 'carNo 파라미터가 필요합니다.' });
       }
