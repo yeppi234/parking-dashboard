@@ -589,11 +589,74 @@
       cursor: not-allowed;
     }
 
-    /* ===== 버튼 순서 ===== */
-    .btn-order-register-close .btn-register { order: 1; }
-    .btn-order-register-close .btn-close { order: 2; }
-    .btn-order-delete-close .btn-delete { order: 1; }
-    .btn-order-delete-close .btn-close { order: 2; }
+    /* ===== 메모 스타일 ===== */
+    .memo-section {
+      padding: 10px;
+      background: #f8fafc;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+    .memo-section .memo-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .memo-section .memo-header .memo-label {
+      font-size: 12px;
+      color: #888;
+    }
+    .memo-section .memo-header .memo-time {
+      font-size: 10px;
+      color: #aaa;
+    }
+    .memo-section .memo-input-row {
+      display: flex;
+      gap: 8px;
+    }
+    .memo-section .memo-input-row input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .memo-section .memo-input-row input:focus {
+      border-color: #3b82f6;
+      outline: none;
+    }
+    .memo-section .memo-input-row .btn-save-memo {
+      padding: 8px 16px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .memo-section .memo-input-row .btn-save-memo:hover { background: #2563eb; }
+    .memo-section .memo-input-row .btn-delete-memo {
+      padding: 8px 16px;
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .memo-section .memo-input-row .btn-delete-memo:hover { background: #dc2626; }
+    .memo-section .memo-text-display {
+      margin-top: 6px;
+      padding: 6px 10px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #374151;
+    }
+    .memo-icon {
+      margin-left: 4px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -633,7 +696,7 @@
 <div class="threshold-modal" id="thresholdModal">
   <div class="threshold-box">
     <h3>⚙️ 잔액 알림 설정</h3>
-    <p>설정한 금액 이하로 떨어지면 알림이 뜹니다.</p>
+    <p>잔여 금액이 설정한 금액 이하로 떨어지면 알림이 뜹니다.</p>
     <input type="number" id="thresholdInput" value="10000" step="1000">
     <div class="btn-row">
       <button class="btn-cancel" onclick="closeThresholdModal()">취소</button>
@@ -680,7 +743,7 @@
       </span>
     </div>
     <div class="header-right">
-      <button class="threshold-btn" onclick="openThresholdModal()">⚙️ 잔액 알림 설정</button>
+      <button class="threshold-btn" onclick="openThresholdModal()">⚙️ 알림 설정</button>
       <span class="time" id="updateTime" style="margin-left:12px;">--:--:--</span>
       <button class="logout-btn" onclick="handleLogout()">로그아웃</button>
     </div>
@@ -1189,6 +1252,52 @@ async function loadAllParkingTimes() {
 }
 
 // ============================================================
+// 📝 차량 메모 관리 (Vercel KV)
+// ============================================================
+async function saveCarMemo(carNo, memo) {
+  try {
+    const response = await fetch(`${PROXY_BASE}/memo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ carNo, memo })
+    });
+    const result = await response.json();
+    return result.success;
+  } catch (e) {
+    console.error('메모 저장 실패:', e);
+    return false;
+  }
+}
+
+async function getCarMemo(carNo) {
+  try {
+    const response = await fetch(`${PROXY_BASE}/memo?carNo=${encodeURIComponent(carNo)}`, {
+      credentials: 'include'
+    });
+    const result = await response.json();
+    return result.data || null;
+  } catch (e) {
+    console.error('메모 조회 실패:', e);
+    return null;
+  }
+}
+
+async function deleteCarMemo(carNo) {
+  try {
+    const response = await fetch(`${PROXY_BASE}/memo?carNo=${encodeURIComponent(carNo)}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    const result = await response.json();
+    return result.success;
+  } catch (e) {
+    console.error('메모 삭제 실패:', e);
+    return false;
+  }
+}
+
+// ============================================================
 // 🔍 차량 검색
 // ============================================================
 async function handleSearch() {
@@ -1289,7 +1398,7 @@ function closeSearchModal() {
 }
 
 // ============================================================
-// 📊 상세 정보 조회 (사진 포함)
+// 📊 상세 정보 조회 (사진 + 메모 포함)
 // ============================================================
 async function fetchDetailAndShowResult(id) {
   document.getElementById('loadingOverlay').classList.add('show');
@@ -1358,7 +1467,7 @@ async function fetchDetailAndShowResult(id) {
 }
 
 // ============================================================
-// 📋 차량 상세 모달 (사진 + 정보 + 버튼)
+// 📋 차량 상세 모달 (사진 + 메모 + 버튼)
 // ============================================================
 function showCarDetailModal(data) {
   const modal = document.getElementById('carDetailModal');
@@ -1389,6 +1498,30 @@ function showCarDetailModal(data) {
     discountHtml = '<div style="color:#94a3b8; padding:8px 0;">할인내역이 없습니다</div>';
   }
 
+  // 메모 조회 (비동기)
+  getCarMemo(data.carNo).then(memoData => {
+    const memoText = memoData ? memoData.memo : '';
+    const updatedAt = memoData ? memoData.updatedAt : '';
+    
+    // 메모 UI 업데이트
+    const memoSection = document.getElementById('memoSection');
+    if (memoSection) {
+      const timeDisplay = updatedAt ? new Date(updatedAt).toLocaleString() : '';
+      memoSection.innerHTML = `
+        <div class="memo-header">
+          <span class="memo-label">📝 메모</span>
+          ${timeDisplay ? `<span class="memo-time">${timeDisplay}</span>` : ''}
+        </div>
+        <div class="memo-input-row">
+          <input type="text" id="memoInput" value="${memoText}" placeholder="차량 메모를 입력하세요">
+          <button class="btn-save-memo" onclick="saveMemo('${data.carNo}')">저장</button>
+          ${memoText ? `<button class="btn-delete-memo" onclick="deleteMemo('${data.carNo}')">삭제</button>` : ''}
+        </div>
+        ${memoText ? `<div class="memo-text-display">💬 ${memoText}</div>` : ''}
+      `;
+    }
+  });
+
   body.innerHTML = `
     <div style="text-align:center; margin-bottom:16px;">
       ${data.pictureUrl ? 
@@ -1410,6 +1543,15 @@ function showCarDetailModal(data) {
       <div style="font-size:12px; color:#888;">📋 할인내역</div>
       <div style="font-size:14px; font-weight:500; margin-top:4px;">${discountHtml}</div>
     </div>
+    <div class="memo-section" id="memoSection">
+      <div class="memo-header">
+        <span class="memo-label">📝 메모</span>
+      </div>
+      <div class="memo-input-row">
+        <input type="text" id="memoInput" placeholder="차량 메모를 입력하세요 (Vercel KV 저장)">
+        <button class="btn-save-memo" onclick="saveMemo('${data.carNo}')">저장</button>
+      </div>
+    </div>
   `;
 
   // 하단 버튼 구성 (닫기/등록 순서)
@@ -1426,10 +1568,65 @@ function showCarDetailModal(data) {
   }
 
   modal.classList.add('show');
+  
+  // 메모 데이터 다시 로드
+  getCarMemo(data.carNo).then(memoData => {
+    const memoText = memoData ? memoData.memo : '';
+    const updatedAt = memoData ? memoData.updatedAt : '';
+    const memoSection = document.getElementById('memoSection');
+    if (memoSection) {
+      const timeDisplay = updatedAt ? new Date(updatedAt).toLocaleString() : '';
+      memoSection.innerHTML = `
+        <div class="memo-header">
+          <span class="memo-label">📝 메모</span>
+          ${timeDisplay ? `<span class="memo-time">${timeDisplay}</span>` : ''}
+        </div>
+        <div class="memo-input-row">
+          <input type="text" id="memoInput" value="${memoText}" placeholder="차량 메모를 입력하세요">
+          <button class="btn-save-memo" onclick="saveMemo('${data.carNo}')">저장</button>
+          ${memoText ? `<button class="btn-delete-memo" onclick="deleteMemo('${data.carNo}')">삭제</button>` : ''}
+        </div>
+        ${memoText ? `<div class="memo-text-display">💬 ${memoText}</div>` : ''}
+      `;
+    }
+  });
 }
 
 function closeCarDetailModal() {
   document.getElementById('carDetailModal').classList.remove('show');
+}
+
+// ============================================================
+// 📝 메모 저장/삭제
+// ============================================================
+async function saveMemo(carNo) {
+  const input = document.getElementById('memoInput');
+  const memo = input.value.trim();
+  
+  if (!memo) {
+    showToast('⚠️ 안내', '메모 내용을 입력해주세요.', 'warning');
+    return;
+  }
+  
+  const success = await saveCarMemo(carNo, memo);
+  if (success) {
+    showToast('✅ 저장 완료', '차량 메모가 Vercel KV에 저장되었습니다.', 'success');
+    fetchDetailAndShowResult(parkingData.id);
+  } else {
+    showToast('❌ 저장 실패', '메모 저장 중 오류가 발생했습니다.', 'danger');
+  }
+}
+
+async function deleteMemo(carNo) {
+  if (!confirm('이 차량의 메모를 삭제하시겠습니까?')) return;
+  
+  const success = await deleteCarMemo(carNo);
+  if (success) {
+    showToast('✅ 삭제 완료', '차량 메모가 삭제되었습니다.', 'success');
+    fetchDetailAndShowResult(parkingData.id);
+  } else {
+    showToast('❌ 삭제 실패', '메모 삭제 중 오류가 발생했습니다.', 'danger');
+  }
 }
 
 // ============================================================
@@ -1794,7 +1991,7 @@ function renderTable(data) {
     return;
   }
 
-  data.forEach((row, idx) => {
+  data.forEach(async (row, idx) => {
     const tr = document.createElement('tr');
     let remainClass = '';
     if (row.paidStat === '10') remainClass = '';
@@ -1812,9 +2009,14 @@ function renderTable(data) {
       ? `<span class="discount-detail-btn" onclick="showDiscountDetails('${row.carNo}')">${totalTimeDisplay} ▼</span>`
       : (row.totalDiscountTime > 0 ? totalTimeDisplay : '-');
 
+    // 메모 확인 (비동기)
+    const memoData = await getCarMemo(row.carNo);
+    const hasMemo = memoData !== null;
+    const memoIcon = hasMemo ? '📌' : '';
+
     tr.innerHTML = `
       <td>${idx + 1}</td>
-      <td><strong>${row.carNo}</strong></td>
+      <td><strong>${row.carNo}</strong> <span class="memo-icon">${memoIcon}</span></td>
       <td>${regDateDisplay}</td>
       <td>${parkingDisplay}</td>
       <td>${discountDisplay}</td>
@@ -1913,6 +2115,8 @@ window.handleLogout = handleLogout;
 window.handleSearch = handleSearch;
 window.handleRegister = handleRegister;
 window.handleDeleteDiscount = handleDeleteDiscount;
+window.saveMemo = saveMemo;
+window.deleteMemo = deleteMemo;
 window.fetchData = fetchData;
 window.showDiscountDetails = showDiscountDetails;
 window.closeDetailModal = closeDetailModal;
