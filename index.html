@@ -161,6 +161,17 @@
       cursor: pointer;
     }
     .threshold-btn:hover { background: #d97706; }
+    .memo-list-btn {
+      background: #8b5cf6;
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .memo-list-btn:hover { background: #7c3aed; }
 
     .threshold-modal {
       position: fixed;
@@ -527,6 +538,59 @@
     }
     .modal-box .modal-close:hover { background: #c0392b; }
 
+    /* ===== 메모 목록 모달 ===== */
+    .memo-list-content {
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 12px;
+    }
+    .memo-list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .memo-list-item .memo-car {
+      font-weight: 600;
+      font-size: 16px;
+    }
+    .memo-list-item .memo-text {
+      font-size: 13px;
+      color: #374151;
+      margin-top: 2px;
+    }
+    .memo-list-item .memo-time {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+    .memo-list-item .memo-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .memo-list-item .memo-actions button {
+      padding: 4px 12px;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      color: white;
+    }
+    .memo-list-item .memo-actions .btn-view {
+      background: #3b82f6;
+    }
+    .memo-list-item .memo-actions .btn-view:hover { background: #2563eb; }
+    .memo-list-item .memo-actions .btn-del {
+      background: #ef4444;
+    }
+    .memo-list-item .memo-actions .btn-del:hover { background: #dc2626; }
+    .memo-empty {
+      text-align: center;
+      color: #94a3b8;
+      padding: 30px;
+    }
+
     /* ===== 차량 상세 모달 ===== */
     .car-detail-footer {
       display: flex;
@@ -734,6 +798,17 @@
   </div>
 </div>
 
+<!-- 메모 목록 모달 -->
+<div class="modal-overlay" id="memoListModal">
+  <div class="modal-box" style="max-width:600px; max-height:80%;">
+    <h3>📋 전체 메모 목록</h3>
+    <div id="memoListBody" class="memo-list-content">
+      <div class="memo-empty">⏳ 메모를 불러오는 중...</div>
+    </div>
+    <button class="modal-close" onclick="closeMemoList()">닫기</button>
+  </div>
+</div>
+
 <div class="container" id="mainContent" style="display:none;">
   <div class="header">
     <div>
@@ -744,6 +819,7 @@
     </div>
     <div class="header-right">
       <button class="threshold-btn" onclick="openThresholdModal()">⚙️ 알림 설정</button>
+      <button class="memo-list-btn" onclick="openMemoList()">📋 메모 목록</button>
       <span class="time" id="updateTime" style="margin-left:12px;">--:--:--</span>
       <button class="logout-btn" onclick="handleLogout()">로그아웃</button>
     </div>
@@ -1294,7 +1370,82 @@ async function deleteCarMemo(carNo) {
     return false;
   }
 }
+
+// ============================================================
+// 📋 전체 메모 목록
+// ============================================================
+async function openMemoList() {
+  const modal = document.getElementById('memoListModal');
+  const body = document.getElementById('memoListBody');
   
+  modal.classList.add('show');
+  body.innerHTML = '<div class="memo-empty">⏳ 메모를 불러오는 중...</div>';
+  
+  try {
+    const memos = JSON.parse(localStorage.getItem('carMemos') || '{}');
+    const memoKeys = Object.keys(memos);
+    
+    if (memoKeys.length === 0) {
+      body.innerHTML = '<div class="memo-empty">📭 저장된 메모가 없습니다.</div>';
+      return;
+    }
+    
+    let html = '';
+    memoKeys.forEach(carNo => {
+      const memoData = memos[carNo];
+      const memoText = memoData.memo || '';
+      const updatedAt = memoData.updatedAt ? new Date(memoData.updatedAt).toLocaleString() : '-';
+      
+      html += `
+        <div class="memo-list-item">
+          <div>
+            <div class="memo-car">🚗 ${carNo}</div>
+            <div class="memo-text">💬 ${memoText}</div>
+            <div class="memo-time">📅 ${updatedAt}</div>
+          </div>
+          <div class="memo-actions">
+            <button class="btn-view" onclick="viewMemoCar('${carNo}')">조회</button>
+            <button class="btn-del" onclick="deleteMemoFromList('${carNo}')">삭제</button>
+          </div>
+        </div>
+      `;
+    });
+    
+    body.innerHTML = html;
+    
+  } catch (error) {
+    console.error('메모 목록 조회 실패:', error);
+    body.innerHTML = '<div class="memo-empty" style="color:#ef4444;">❌ 메모를 불러오지 못했습니다.</div>';
+  }
+}
+
+function closeMemoList() {
+  document.getElementById('memoListModal').classList.remove('show');
+}
+
+function viewMemoCar(carNo) {
+  closeMemoList();
+  document.getElementById('searchInput').value = carNo;
+  handleSearch();
+}
+
+async function deleteMemoFromList(carNo) {
+  if (!confirm(`🚗 ${carNo}의 메모를 삭제하시겠습니까?`)) return;
+  
+  const success = await deleteCarMemo(carNo);
+  if (success) {
+    const memos = JSON.parse(localStorage.getItem('carMemos') || '{}');
+    delete memos[carNo];
+    localStorage.setItem('carMemos', JSON.stringify(memos));
+    
+    showToast('✅ 삭제 완료', `🚗 ${carNo} 메모가 삭제되었습니다.`, 'success');
+    openMemoList();
+    fetchData();
+  } else {
+    showToast('❌ 삭제 실패', '메모 삭제 중 오류가 발생했습니다.', 'danger');
+  }
+}
+
 // ============================================================
 // 🔍 차량 검색
 // ============================================================
@@ -1454,7 +1605,6 @@ async function fetchDetailAndShowResult(id) {
       parkVisitCar: parkVisitCar
     };
 
-    // ✅ 메모 먼저 로드 후 모달 표시
     const memoData = await getCarMemo(parkingData.carNo);
     showCarDetailModal(parkingData, memoData);
 
@@ -1474,13 +1624,11 @@ function showCarDetailModal(data, memoData) {
   const body = document.getElementById('carDetailBody');
   const footer = document.getElementById('carDetailFooter');
 
-  // 할인내역이 있는지 확인
   const hasDiscount = data.parkVisitCar && data.parkVisitCar.length > 0;
 
-  // 할인내역 리스트 (삭제 버튼 포함)
   let discountHtml = '';
   if (hasDiscount) {
-    data.parkVisitCar.forEach((item, index) => {
+    data.parkVisitCar.forEach((item) => {
       const discountName = item.discount_name || '할인';
       const dcTime = item.dc_time || '0분';
       const tckttrnsId = item.tckttrns_id || '';
@@ -1498,7 +1646,6 @@ function showCarDetailModal(data, memoData) {
     discountHtml = '<div style="color:#94a3b8; padding:8px 0;">할인내역이 없습니다</div>';
   }
 
-  // 메모 데이터 처리
   const memoText = memoData ? memoData.memo : '';
   const updatedAt = memoData ? memoData.updatedAt : '';
   const timeDisplay = updatedAt ? new Date(updatedAt).toLocaleString() : '';
@@ -1530,7 +1677,7 @@ function showCarDetailModal(data, memoData) {
         ${timeDisplay ? `<span class="memo-time">${timeDisplay}</span>` : ''}
       </div>
       <div class="memo-input-row">
-        <input type="text" id="memoInput" value="${memoText}" placeholder="차량 메모를 입력하세요">
+        <input type="text" id="memoInput" value="${memoText}" placeholder="차량 메모를 입력하세요 (Vercel KV 저장)">
         <button class="btn-save-memo" onclick="saveMemo('${data.carNo}')">저장</button>
         ${memoText ? `<button class="btn-delete-memo" onclick="deleteMemo('${data.carNo}')">삭제</button>` : ''}
       </div>
@@ -1538,7 +1685,6 @@ function showCarDetailModal(data, memoData) {
     </div>
   `;
 
-  // 하단 버튼 구성 (닫기/등록 순서)
   if (hasDiscount) {
     footer.innerHTML = `
       <button class="btn-close" onclick="closeCarDetailModal()" style="order:1;">닫기</button>
@@ -1572,16 +1718,14 @@ async function saveMemo(carNo) {
   
   const success = await saveCarMemo(carNo, memo);
   if (success) {
-    // ✅ localStorage 캐시 업데이트
     const memos = JSON.parse(localStorage.getItem('carMemos') || '{}');
     memos[carNo] = { memo, updatedAt: new Date().toISOString() };
     localStorage.setItem('carMemos', JSON.stringify(memos));
     
     showToast('✅ 저장 완료', '차량 메모가 저장되었습니다.', 'success');
-    // 모달만 새로고침 (전체 페이지 새로고침 없이)
     const memoData = await getCarMemo(carNo);
     showCarDetailModal(parkingData, memoData);
-    fetchData(); // 테이블 업데이트
+    fetchData();
   } else {
     showToast('❌ 저장 실패', '메모 저장 중 오류가 발생했습니다.', 'danger');
   }
@@ -1592,7 +1736,6 @@ async function deleteMemo(carNo) {
   
   const success = await deleteCarMemo(carNo);
   if (success) {
-    // ✅ localStorage 캐시에서 삭제
     const memos = JSON.parse(localStorage.getItem('carMemos') || '{}');
     delete memos[carNo];
     localStorage.setItem('carMemos', JSON.stringify(memos));
@@ -1666,7 +1809,6 @@ async function handleRegister() {
     return;
   }
 
-  // 이미 등록된 차량인지 확인
   const hasOasisRegistration = parkingData.parkVisitCar?.some((item) => {
     const account = item.account_no || '';
     const name = item.name || '';
@@ -1678,7 +1820,6 @@ async function handleRegister() {
     return;
   }
 
-  // 남은 시간 계산
   const totalMinutesWithGrace = calculateFinalParkingTime(parkingData.originalTime);
   const roundedMinutes = Math.ceil(totalMinutesWithGrace / 30) * 30;
   const remainingMinutes = roundedMinutes - parkingData.existingMinutes;
@@ -1694,7 +1835,6 @@ async function handleRegister() {
   document.getElementById('loadingText').textContent = '등록 중...';
 
   try {
-    // 할인 유형 선택
     const discountIds = selectDiscountType(remainingMinutes, parkingData.discountList);
     if (!discountIds || discountIds.length === 0) {
       showToast('❌ 오류', '선택된 할인이 없습니다', 'danger');
@@ -1702,7 +1842,6 @@ async function handleRegister() {
       return;
     }
 
-    // 할인 등록 실행
     for (const discountId of discountIds) {
       const response = await fetch(`${PROXY_BASE}/discount/registration/save`, {
         method: 'POST',
@@ -1735,7 +1874,6 @@ async function handleRegister() {
       }
     }
 
-    // 등록 성공 메시지
     const baseTime = calculateTotalParkingTime(parkingData.originalTime);
     const maxRegisteredTime = Math.min(baseTime + 30, 600);
     const remainTime = maxRegisteredTime - baseTime;
@@ -1968,7 +2106,6 @@ function renderTable(data) {
     return;
   }
 
-  // ✅ 모든 메모를 한 번에 가져와서 캐싱
   const allMemos = JSON.parse(localStorage.getItem('carMemos') || '{}');
 
   data.forEach((row, idx) => {
@@ -1989,7 +2126,6 @@ function renderTable(data) {
       ? `<span class="discount-detail-btn" onclick="showDiscountDetails('${row.carNo}')">${totalTimeDisplay} ▼</span>`
       : (row.totalDiscountTime > 0 ? totalTimeDisplay : '-');
 
-    // ✅ localStorage에서 바로 메모 확인 (깜빡임 없음)
     const hasMemo = allMemos[row.carNo] !== undefined;
     const memoIcon = hasMemo ? '📌' : '';
 
@@ -2076,7 +2212,6 @@ function initApp() {
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('mainContent').style.display = 'block';
     
-    // ✅ 메모 캐시 초기 로드
     const memos = JSON.parse(localStorage.getItem('carMemos') || '{}');
     if (Object.keys(memos).length === 0) {
       localStorage.setItem('carMemos', JSON.stringify({}));
@@ -2103,6 +2238,10 @@ window.handleRegister = handleRegister;
 window.handleDeleteDiscount = handleDeleteDiscount;
 window.saveMemo = saveMemo;
 window.deleteMemo = deleteMemo;
+window.openMemoList = openMemoList;
+window.closeMemoList = closeMemoList;
+window.viewMemoCar = viewMemoCar;
+window.deleteMemoFromList = deleteMemoFromList;
 window.fetchData = fetchData;
 window.showDiscountDetails = showDiscountDetails;
 window.closeDetailModal = closeDetailModal;
@@ -2113,6 +2252,5 @@ window.closeThresholdModal = closeThresholdModal;
 window.saveThreshold = saveThreshold;
 window.refreshBalance = refreshBalance;
 </script>
-
 </body>
 </html>
