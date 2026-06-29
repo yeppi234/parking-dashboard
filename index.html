@@ -887,6 +887,7 @@ async function handleLogin() {
     if (sessionIdFromCookie) {
       sessionId = sessionIdFromCookie;
       document.cookie = `JSESSIONID=${sessionId}; path=/;`;
+      localStorage.setItem('sessionId', sessionId);
       console.log('✅ 세션 ID 저장됨:', sessionId);
     }
 
@@ -970,6 +971,7 @@ async function refreshBalance(showAlert = false) {
 
 function handleLogout() {
   if (!document.getElementById('rememberMe').checked) clearCredentials();
+  localStorage.removeItem('sessionId');
   document.getElementById('loginOverlay').style.display = 'flex';
   document.getElementById('mainContent').style.display = 'none';
   document.getElementById('loginError').style.display = 'none';
@@ -1410,18 +1412,18 @@ function showCarDetailModal(data) {
     </div>
   `;
 
-// 하단 버튼 구성 (닫기/등록 순서)
-if (hasDiscount) {
-  footer.innerHTML = `
-    <button class="btn-close" onclick="closeCarDetailModal()" style="order:1;">닫기</button>
-    <button class="btn-register" disabled style="order:2;">등록</button>
-  `;
-} else {
-  footer.innerHTML = `
-    <button class="btn-close" onclick="closeCarDetailModal()" style="order:1;">닫기</button>
-    <button class="btn-register" onclick="handleRegister()" style="order:2;">등록</button>
-  `;
-}
+  // 하단 버튼 구성 (닫기/등록 순서)
+  if (hasDiscount) {
+    footer.innerHTML = `
+      <button class="btn-close" onclick="closeCarDetailModal()" style="order:1;">닫기</button>
+      <button class="btn-register" disabled style="order:2;">등록</button>
+    `;
+  } else {
+    footer.innerHTML = `
+      <button class="btn-close" onclick="closeCarDetailModal()" style="order:1;">닫기</button>
+      <button class="btn-register" onclick="handleRegister()" style="order:2;">등록</button>
+    `;
+  }
 
   modal.classList.add('show');
 }
@@ -1883,8 +1885,24 @@ function saveThreshold() {
 // ============================================================
 // ✅ 초기화
 // ============================================================
+function initApp() {
+  const savedSessionId = localStorage.getItem('sessionId');
+  if (savedSessionId) {
+    sessionId = savedSessionId;
+    document.cookie = `JSESSIONID=${sessionId}; path=/;`;
+    console.log('✅ 저장된 세션 복원:', sessionId);
+    
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+    fetchData();
+    if (refreshInterval) clearInterval(refreshInterval);
+    refreshInterval = setInterval(fetchData, 5000);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   loadSavedCredentials();
+  initApp();
 });
 
 // ============================================================
