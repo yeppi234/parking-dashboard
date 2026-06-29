@@ -1,4 +1,4 @@
-
+<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -442,7 +442,6 @@
       max-height: 80%;
       overflow-y: auto;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      position: relative;
     }
     .detail-modal-box h3 {
       margin-bottom: 16px;
@@ -542,19 +541,13 @@
     }
     .modal-box .modal-close:hover { background: #c0392b; }
 
-    /* ===== 차량 상세 모달 내부 ===== */
-    .car-detail-content {
-      padding-bottom: 80px;
-    }
+    /* ===== 차량 상세 모달 ===== */
     .car-detail-footer {
-      position: sticky;
-      bottom: 0;
-      background: white;
-      padding: 12px 0;
       display: flex;
       gap: 10px;
+      padding: 12px 0;
       border-top: 1px solid #e5e7eb;
-      margin-top: 8px;
+      margin-top: 12px;
     }
     .car-detail-footer button {
       flex: 1;
@@ -576,6 +569,36 @@
     }
     .car-detail-footer .btn-register:hover { background: #16a34a; }
     .car-detail-footer .btn-register:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+    .car-detail-footer .btn-delete {
+      background: #ef4444;
+      color: white;
+    }
+    .car-detail-footer .btn-delete:hover { background: #dc2626; }
+    .car-detail-footer .btn-delete:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+    .discount-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .discount-item .del-btn {
+      padding: 2px 12px;
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .discount-item .del-btn:hover { background: #dc2626; }
+    .discount-item .del-btn:disabled {
       background: #94a3b8;
       cursor: not-allowed;
     }
@@ -649,10 +672,9 @@
 <div class="modal-overlay" id="carDetailModal">
   <div class="modal-box" style="max-width:500px;">
     <h3>🚗 차량 상세 정보</h3>
-    <div class="car-detail-content" id="carDetailBody"></div>
-    <div class="car-detail-footer">
-      <button class="btn-close" onclick="closeCarDetailModal()">닫기</button>
-      <button class="btn-register" id="carRegisterBtn" onclick="handleRegister()">📝 등록</button>
+    <div id="carDetailBody"></div>
+    <div class="car-detail-footer" id="carDetailFooter">
+      <!-- JavaScript에서 동적으로 생성 -->
     </div>
   </div>
 </div>
@@ -1345,37 +1367,35 @@ async function fetchDetailAndShowResult(id) {
 }
 
 // ============================================================
-// 📋 차량 상세 모달 (사진 + 정보)
+// 📋 차량 상세 모달 (사진 + 정보 + 버튼)
 // ============================================================
 function showCarDetailModal(data) {
   const modal = document.getElementById('carDetailModal');
   const body = document.getElementById('carDetailBody');
-  const registerBtn = document.getElementById('carRegisterBtn');
-  
-  // 기존 등록 여부 확인
-  const hasOasisRegistration = data.parkVisitCar?.some(item => {
-    const account = item.account_no || '';
-    const name = item.name || '';
-    return account.includes('oasis') || name.includes('oasis');
-  });
+  const footer = document.getElementById('carDetailFooter');
 
-  // 남은 시간 계산
-  const totalMinutes = calculateTotalParkingTime(data.originalTime);
-  const remainTime = Math.max(0, totalMinutes + 30 - data.existingMinutes);
+  // 할인내역이 있는지 확인
+  const hasDiscount = data.parkVisitCar && data.parkVisitCar.length > 0;
 
-  // 등록 버튼 상태 업데이트
-  if (hasOasisRegistration) {
-    registerBtn.disabled = true;
-    registerBtn.textContent = '✅ 이미 등록됨';
-    registerBtn.style.background = '#94a3b8';
-  } else if (remainTime <= 0) {
-    registerBtn.disabled = true;
-    registerBtn.textContent = '⏰ 시간 만료';
-    registerBtn.style.background = '#94a3b8';
+  // 할인내역 리스트 (삭제 버튼 포함)
+  let discountHtml = '';
+  if (hasDiscount) {
+    data.parkVisitCar.forEach((item, index) => {
+      const discountName = item.discount_name || '할인';
+      const dcTime = item.dc_time || '0분';
+      const tckttrnsId = item.tckttrns_id || '';
+      const idno = item.idno || '';
+      discountHtml += `
+        <div class="discount-item">
+          <span>${discountName} (${dcTime})</span>
+          <button class="del-btn" onclick="handleDeleteDiscount('${tckttrnsId}', '${idno}')" ${!tckttrnsId || !idno ? 'disabled' : ''}>
+            삭제
+          </button>
+        </div>
+      `;
+    });
   } else {
-    registerBtn.disabled = false;
-    registerBtn.textContent = '📝 등록';
-    registerBtn.style.background = '#22c55e';
+    discountHtml = '<div style="color:#94a3b8; padding:8px 0;">할인내역이 없습니다</div>';
   }
 
   body.innerHTML = `
@@ -1397,15 +1417,79 @@ function showCarDetailModal(data) {
     </div>
     <div style="padding:10px; background:#f8fafc; border-radius:8px; margin-bottom:12px;">
       <div style="font-size:12px; color:#888;">📋 할인내역</div>
-      <div style="font-size:16px; font-weight:600; margin-top:4px;">${formatTime(data.existingMinutes)}</div>
+      <div style="font-size:14px; font-weight:500; margin-top:4px;">${discountHtml}</div>
     </div>
   `;
-  
+
+  // 하단 버튼 구성
+  if (hasDiscount) {
+    footer.innerHTML = `
+      <button class="btn-register" disabled>✅ 등록됨</button>
+      <button class="btn-close" onclick="closeCarDetailModal()">닫기</button>
+    `;
+  } else {
+    footer.innerHTML = `
+      <button class="btn-register" onclick="handleRegister()">📝 등록</button>
+      <button class="btn-close" onclick="closeCarDetailModal()">닫기</button>
+    `;
+  }
+
   modal.classList.add('show');
 }
 
 function closeCarDetailModal() {
   document.getElementById('carDetailModal').classList.remove('show');
+}
+
+// ============================================================
+// 🗑️ 개별 할인내역 삭제
+// ============================================================
+async function handleDeleteDiscount(tckttrns_id, idno) {
+  if (!tckttrns_id || !idno) {
+    showToast('⚠️ 오류', '삭제할 할인 정보가 없습니다.', 'warning');
+    return;
+  }
+
+  const confirmDelete = confirm('이 할인내역을 삭제하시겠습니까?');
+  if (!confirmDelete) return;
+
+  document.getElementById('loadingOverlay').classList.add('show');
+  document.getElementById('loadingText').textContent = '삭제 중...';
+
+  try {
+    const response = await fetch(`${PROXY_BASE}/state/delete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'include',
+      body: new URLSearchParams({
+        tckttrns_id: tckttrns_id,
+        idno: idno
+      })
+    });
+
+    if (response.status === 403 || response.status === 401) {
+      handleLogout();
+      showToast('⚠️ 세션 만료', '다시 로그인해주세요', 'danger');
+      document.getElementById('loadingOverlay').classList.remove('show');
+      return;
+    }
+
+    const result = await response.text();
+    console.log('🗑️ 삭제 응답:', result);
+
+    closeCarDetailModal();
+    showToast('✅ 삭제 완료', '할인내역이 삭제되었습니다.', 'success');
+    fetchData();
+
+  } catch (error) {
+    console.error('❌ 삭제 오류:', error);
+    showToast('❌ 삭제 실패', error.message || '삭제 중 오류가 발생했습니다.', 'danger');
+  } finally {
+    document.getElementById('loadingOverlay').classList.remove('show');
+  }
 }
 
 // ============================================================
@@ -1821,6 +1905,7 @@ window.handleLogin = handleLogin;
 window.handleLogout = handleLogout;
 window.handleSearch = handleSearch;
 window.handleRegister = handleRegister;
+window.handleDeleteDiscount = handleDeleteDiscount;
 window.fetchData = fetchData;
 window.showDiscountDetails = showDiscountDetails;
 window.closeDetailModal = closeDetailModal;
