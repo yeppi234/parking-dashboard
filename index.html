@@ -1414,12 +1414,12 @@ function showCarDetailModal(data) {
 if (hasDiscount) {
   footer.innerHTML = `
     <button class="btn-close" onclick="closeCarDetailModal()" style="order:1;">닫기</button>
-    <button class="btn-register" disabled style="order:2;">✅ 등록됨</button>
+    <button class="btn-register" disabled style="order:2;">등록</button>
   `;
 } else {
   footer.innerHTML = `
     <button class="btn-close" onclick="closeCarDetailModal()" style="order:1;">닫기</button>
-    <button class="btn-register" onclick="handleRegister()" style="order:2;">📝 등록</button>
+    <button class="btn-register" onclick="handleRegister()" style="order:2;">등록</button>
   `;
 }
 
