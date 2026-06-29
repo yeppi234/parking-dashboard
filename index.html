@@ -2111,13 +2111,26 @@ function renderTable(data) {
   data.forEach((row, idx) => {
     const tr = document.createElement('tr');
     let remainClass = '';
-    if (row.paidStat === '10') remainClass = '';
-    else if (row.remainTime <= 0) remainClass = 'highlight-red';
-    else if (row.remainTime <= 30) remainClass = 'highlight-orange';
-    else remainClass = 'highlight-green';
+    
+    // ✅ 출차여유시간 표시 (수정된 부분)
+    let remainDisplay;
+    if (row.paidStat === '10') {
+      // 출차완료인 경우
+      remainDisplay = '-분';
+      remainClass = '';
+    } else if (row.remainTime <= 0) {
+      // 초과된 경우 (음수 표시)
+      remainDisplay = `${row.remainTime}분`;
+      remainClass = 'highlight-red';
+    } else if (row.remainTime <= 30) {
+      remainDisplay = formatTime(row.remainTime);
+      remainClass = 'highlight-orange';
+    } else {
+      remainDisplay = formatTime(row.remainTime);
+      remainClass = 'highlight-green';
+    }
     
     const parkingDisplay = formatTime(row.parkingMinutes);
-    const remainDisplay = formatTime(row.remainTime);
     const regDateDisplay = row.regDate ? fncDatetimeFormat(row.regDate) : '-';
     
     const hasDetails = row.discountDetails && row.discountDetails.length > 0;
@@ -2142,7 +2155,7 @@ function renderTable(data) {
     tbody.appendChild(tr);
   });
 }
-
+  
 function showDiscountDetails(carNo) {
   const car = allCarsData.find(c => c.carNo === carNo);
   if (!car || !car.discountDetails || car.discountDetails.length === 0) {
