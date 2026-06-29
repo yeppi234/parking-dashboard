@@ -1410,20 +1410,18 @@ function showCarDetailModal(data) {
     </div>
   `;
 
-  // 하단 버튼 구성 (등록/닫기 순서)
-  if (hasDiscount) {
-    // 할인내역 있음: 등록 비활성화 + 닫기
-    footer.innerHTML = `
-      <button class="btn-register" disabled style="order:1;">✅ 등록됨</button>
-      <button class="btn-close" onclick="closeCarDetailModal()" style="order:2;">닫기</button>
-    `;
-  } else {
-    // 할인내역 없음: 등록 활성화 + 닫기
-    footer.innerHTML = `
-      <button class="btn-register" onclick="handleRegister()" style="order:1;">📝 등록</button>
-      <button class="btn-close" onclick="closeCarDetailModal()" style="order:2;">닫기</button>
-    `;
-  }
+// 하단 버튼 구성 (닫기/등록 순서)
+if (hasDiscount) {
+  footer.innerHTML = `
+    <button class="btn-close" onclick="closeCarDetailModal()" style="order:1;">닫기</button>
+    <button class="btn-register" disabled style="order:2;">✅ 등록됨</button>
+  `;
+} else {
+  footer.innerHTML = `
+    <button class="btn-close" onclick="closeCarDetailModal()" style="order:1;">닫기</button>
+    <button class="btn-register" onclick="handleRegister()" style="order:2;">📝 등록</button>
+  `;
+}
 
   modal.classList.add('show');
 }
