@@ -3,7 +3,7 @@
   "version": 2,
   "routes": [
     {
-      "src": "/api/proxy/memo",
+      "src": "/api/memo",
       "dest": "/api/proxy.js"
     },
     {
