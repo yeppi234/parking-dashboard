@@ -73,11 +73,10 @@ export default async function handler(req, res) {
       const html = await response.text();
       const setCookie = response.headers.get('set-cookie');
       if (setCookie) res.setHeader('Set-Cookie', setCookie);
-      res.status(response.status).send(html);
+      return res.status(response.status).send(html);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: error.message });
     }
-    return;
   }
 
   // ============================================================
@@ -117,13 +116,13 @@ export default async function handler(req, res) {
         res.setHeader('Set-Cookie', setCookie);
       }
 
-      res.status(response.status).send(responseData);
+      return res.status(response.status).send(responseData);
     } catch (error) {
       console.error('❌ 프록시 오류:', error);
-      res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: error.message });
     }
-    return;
   }
 
-  res.status(405).json({ error: 'Method Not Allowed' });
+  // 지원하지 않는 메서드
+  return res.status(405).json({ error: 'Method Not Allowed' });
 }
