@@ -1568,11 +1568,11 @@ async function handleRegister() {
 
     if (baseTime > 600) {
       const extraMinutes = baseTime - 600;
-      showToast('⚠️ 10시간 초과!','danger');
+      showToast('⚠️ 10시간 초과!', 'danger');
     } else if (remainTime <= 30 && remainTime > 0) {
-      showToast('✅ 주차 등록 완료','success');
+      showToast('✅ 주차 등록 완료', 'success');
     } else {
-      showToast('✅ 주차 등록 완료','success');
+      showToast('✅ 주차 등록 완료', 'success');
     }
 
     fetchData();
