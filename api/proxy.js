@@ -80,6 +80,56 @@ export default async function handler(req, res) {
   }
 
   // ============================================================
+  // ✅ 메모 API (Vercel KV)
+  // ============================================================
+
+  // 메모 조회 (GET)
+  if (req.method === 'GET' && path === '/memo') {
+    try {
+      const carNo = url.split('?').find(q => q.includes('carNo='))?.split('=')[1] || '';
+      if (!carNo) {
+        return res.status(400).json({ error: 'carNo 파라미터가 필요합니다.' });
+      }
+      const data = await kv.get(`memo:${carNo}`);
+      return res.status(200).json({ data: data || null });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  // 메모 저장 (POST)
+  if (req.method === 'POST' && path === '/memo') {
+    try {
+      const { carNo, memo } = req.body;
+      if (!carNo || !memo) {
+        return res.status(400).json({ error: 'carNo와 memo가 필요합니다.' });
+      }
+      const memoData = {
+        memo: memo.trim(),
+        updatedAt: new Date().toISOString()
+      };
+      await kv.set(`memo:${carNo}`, JSON.stringify(memoData));
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  // 메모 삭제 (DELETE)
+  if (req.method === 'DELETE' && path === '/memo') {
+    try {
+      const carNo = url.split('?').find(q => q.includes('carNo='))?.split('=')[1] || '';
+      if (!carNo) {
+        return res.status(400).json({ error: 'carNo 파라미터가 필요합니다.' });
+      }
+      await kv.del(`memo:${carNo}`);
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  // ============================================================
   // ✅ POST 요청 - 실제 API 프록시
   // ============================================================
   if (req.method === 'POST') {
