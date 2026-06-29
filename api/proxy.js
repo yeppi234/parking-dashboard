@@ -34,7 +34,9 @@ export default async function handler(req, res) {
       }
       const data = await kv.get(`memo:${carNo}`);
       console.log('📌 KV 조회 결과:', data);
-      return res.status(200).json({ data: data || null });
+      // ✅ JSON 파싱 추가
+      const parsedData = data ? JSON.parse(data) : null;
+      return res.status(200).json({ data: parsedData });
     } catch (error) {
       console.error('❌ 메모 조회 오류:', error);
       return res.status(500).json({ error: error.message });
