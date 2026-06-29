@@ -33,8 +33,18 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'carNo 파라미터가 필요합니다.' });
       }
       const data = await kv.get(`memo:${carNo}`);
-      console.log('📌 KV 조회 결과:', data);
-      const parsedData = data ? JSON.parse(data) : null;
+      console.log('📌 KV 조회 결과 (raw):', data);
+      
+      // ✅ data가 이미 객체인 경우 처리
+      let parsedData = null;
+      if (data) {
+        try {
+          parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+        } catch (e) {
+          console.error('❌ JSON 파싱 오류:', e);
+          parsedData = data;
+        }
+      }
       return res.status(200).json({ data: parsedData });
     } catch (error) {
       console.error('❌ 메모 조회 오류:', error);
