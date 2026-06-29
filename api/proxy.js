@@ -21,11 +21,11 @@ export default async function handler(req, res) {
   console.log('📌 메서드:', req.method);
 
   // ============================================================
-  // ✅ 메모 API (Vercel KV) - 가장 먼저 처리!
+  // ✅ 메모 API (Vercel KV) - 먼저 처리!
   // ============================================================
 
-  // 메모 조회 (GET)
-  if (req.method === 'GET' && path === '/memo') {
+  // 메모 조회 (GET) - path에 memo가 포함되어 있으면 처리
+  if (req.method === 'GET' && path.includes('memo')) {
     try {
       const carNo = url.split('?').find(q => q.includes('carNo='))?.split('=')[1] || '';
       console.log('📌 메모 조회 - 차량번호:', carNo);
@@ -41,8 +41,8 @@ export default async function handler(req, res) {
     }
   }
 
-  // 메모 저장 (POST)
-  if (req.method === 'POST' && path === '/memo') {
+  // 메모 저장 (POST) - path에 memo가 포함되어 있으면 처리
+  if (req.method === 'POST' && path.includes('memo')) {
     try {
       const { carNo, memo } = req.body;
       console.log('📌 메모 저장 - 차량번호:', carNo, '메모:', memo);
@@ -62,8 +62,8 @@ export default async function handler(req, res) {
     }
   }
 
-  // 메모 삭제 (DELETE)
-  if (req.method === 'DELETE' && path === '/memo') {
+  // 메모 삭제 (DELETE) - path에 memo가 포함되어 있으면 처리
+  if (req.method === 'DELETE' && path.includes('memo')) {
     try {
       const carNo = url.split('?').find(q => q.includes('carNo='))?.split('=')[1] || '';
       if (!carNo) {
