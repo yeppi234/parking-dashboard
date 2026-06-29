@@ -1456,7 +1456,9 @@ async function fetchDetailAndShowResult(id) {
       parkVisitCar: parkVisitCar
     };
 
-    showCarDetailModal(parkingData);
+    // ✅ 메모 먼저 로드 후 모달 표시
+    const memoData = await getCarMemo(parkingData.carNo);
+    showCarDetailModal(parkingData, memoData);
 
   } catch (error) {
     console.error('상세 조회 오류:', error);
@@ -1469,7 +1471,7 @@ async function fetchDetailAndShowResult(id) {
 // ============================================================
 // 📋 차량 상세 모달 (사진 + 메모 + 버튼)
 // ============================================================
-function showCarDetailModal(data) {
+function showCarDetailModal(data, memoData) {
   const modal = document.getElementById('carDetailModal');
   const body = document.getElementById('carDetailBody');
   const footer = document.getElementById('carDetailFooter');
@@ -1498,29 +1500,10 @@ function showCarDetailModal(data) {
     discountHtml = '<div style="color:#94a3b8; padding:8px 0;">할인내역이 없습니다</div>';
   }
 
-  // 메모 조회 (비동기)
-  getCarMemo(data.carNo).then(memoData => {
-    const memoText = memoData ? memoData.memo : '';
-    const updatedAt = memoData ? memoData.updatedAt : '';
-    
-    // 메모 UI 업데이트
-    const memoSection = document.getElementById('memoSection');
-    if (memoSection) {
-      const timeDisplay = updatedAt ? new Date(updatedAt).toLocaleString() : '';
-      memoSection.innerHTML = `
-        <div class="memo-header">
-          <span class="memo-label">📝 메모</span>
-          ${timeDisplay ? `<span class="memo-time">${timeDisplay}</span>` : ''}
-        </div>
-        <div class="memo-input-row">
-          <input type="text" id="memoInput" value="${memoText}" placeholder="차량 메모를 입력하세요">
-          <button class="btn-save-memo" onclick="saveMemo('${data.carNo}')">저장</button>
-          ${memoText ? `<button class="btn-delete-memo" onclick="deleteMemo('${data.carNo}')">삭제</button>` : ''}
-        </div>
-        ${memoText ? `<div class="memo-text-display">💬 ${memoText}</div>` : ''}
-      `;
-    }
-  });
+  // 메모 데이터 처리
+  const memoText = memoData ? memoData.memo : '';
+  const updatedAt = memoData ? memoData.updatedAt : '';
+  const timeDisplay = updatedAt ? new Date(updatedAt).toLocaleString() : '';
 
   body.innerHTML = `
     <div style="text-align:center; margin-bottom:16px;">
@@ -1543,14 +1526,17 @@ function showCarDetailModal(data) {
       <div style="font-size:12px; color:#888;">📋 할인내역</div>
       <div style="font-size:14px; font-weight:500; margin-top:4px;">${discountHtml}</div>
     </div>
-    <div class="memo-section" id="memoSection">
+    <div class="memo-section">
       <div class="memo-header">
         <span class="memo-label">📝 메모</span>
+        ${timeDisplay ? `<span class="memo-time">${timeDisplay}</span>` : ''}
       </div>
       <div class="memo-input-row">
-        <input type="text" id="memoInput" placeholder="차량 메모를 입력하세요 (Vercel KV 저장)">
+        <input type="text" id="memoInput" value="${memoText}" placeholder="차량 메모를 입력하세요 (Vercel KV 저장)">
         <button class="btn-save-memo" onclick="saveMemo('${data.carNo}')">저장</button>
+        ${memoText ? `<button class="btn-delete-memo" onclick="deleteMemo('${data.carNo}')">삭제</button>` : ''}
       </div>
+      ${memoText ? `<div class="memo-text-display">💬 ${memoText}</div>` : ''}
     </div>
   `;
 
@@ -1568,28 +1554,6 @@ function showCarDetailModal(data) {
   }
 
   modal.classList.add('show');
-  
-  // 메모 데이터 다시 로드
-  getCarMemo(data.carNo).then(memoData => {
-    const memoText = memoData ? memoData.memo : '';
-    const updatedAt = memoData ? memoData.updatedAt : '';
-    const memoSection = document.getElementById('memoSection');
-    if (memoSection) {
-      const timeDisplay = updatedAt ? new Date(updatedAt).toLocaleString() : '';
-      memoSection.innerHTML = `
-        <div class="memo-header">
-          <span class="memo-label">📝 메모</span>
-          ${timeDisplay ? `<span class="memo-time">${timeDisplay}</span>` : ''}
-        </div>
-        <div class="memo-input-row">
-          <input type="text" id="memoInput" value="${memoText}" placeholder="차량 메모를 입력하세요">
-          <button class="btn-save-memo" onclick="saveMemo('${data.carNo}')">저장</button>
-          ${memoText ? `<button class="btn-delete-memo" onclick="deleteMemo('${data.carNo}')">삭제</button>` : ''}
-        </div>
-        ${memoText ? `<div class="memo-text-display">💬 ${memoText}</div>` : ''}
-      `;
-    }
-  });
 }
 
 function closeCarDetailModal() {
@@ -1610,8 +1574,16 @@ async function saveMemo(carNo) {
   
   const success = await saveCarMemo(carNo, memo);
   if (success) {
-    showToast('✅ 저장 완료', '차량 메모가 Vercel KV에 저장되었습니다.', 'success');
-    fetchDetailAndShowResult(parkingData.id);
+    // ✅ localStorage 캐시 업데이트
+    const memos = JSON.parse(localStorage.getItem('carMemos') || '{}');
+    memos[carNo] = { memo, updatedAt: new Date().toISOString() };
+    localStorage.setItem('carMemos', JSON.stringify(memos));
+    
+    showToast('✅ 저장 완료', '차량 메모가 저장되었습니다.', 'success');
+    // 모달만 새로고침 (전체 페이지 새로고침 없이)
+    const memoData = await getCarMemo(carNo);
+    showCarDetailModal(parkingData, memoData);
+    fetchData(); // 테이블 업데이트
   } else {
     showToast('❌ 저장 실패', '메모 저장 중 오류가 발생했습니다.', 'danger');
   }
@@ -1622,8 +1594,15 @@ async function deleteMemo(carNo) {
   
   const success = await deleteCarMemo(carNo);
   if (success) {
+    // ✅ localStorage 캐시에서 삭제
+    const memos = JSON.parse(localStorage.getItem('carMemos') || '{}');
+    delete memos[carNo];
+    localStorage.setItem('carMemos', JSON.stringify(memos));
+    
     showToast('✅ 삭제 완료', '차량 메모가 삭제되었습니다.', 'success');
-    fetchDetailAndShowResult(parkingData.id);
+    const memoData = await getCarMemo(carNo);
+    showCarDetailModal(parkingData, memoData);
+    fetchData();
   } else {
     showToast('❌ 삭제 실패', '메모 삭제 중 오류가 발생했습니다.', 'danger');
   }
@@ -1991,7 +1970,10 @@ function renderTable(data) {
     return;
   }
 
-  data.forEach(async (row, idx) => {
+  // ✅ 모든 메모를 한 번에 가져와서 캐싱
+  const allMemos = JSON.parse(localStorage.getItem('carMemos') || '{}');
+
+  data.forEach((row, idx) => {
     const tr = document.createElement('tr');
     let remainClass = '';
     if (row.paidStat === '10') remainClass = '';
@@ -2009,9 +1991,8 @@ function renderTable(data) {
       ? `<span class="discount-detail-btn" onclick="showDiscountDetails('${row.carNo}')">${totalTimeDisplay} ▼</span>`
       : (row.totalDiscountTime > 0 ? totalTimeDisplay : '-');
 
-    // 메모 확인 (비동기)
-    const memoData = await getCarMemo(row.carNo);
-    const hasMemo = memoData !== null;
+    // ✅ localStorage에서 바로 메모 확인 (깜빡임 없음)
+    const hasMemo = allMemos[row.carNo] !== undefined;
     const memoIcon = hasMemo ? '📌' : '';
 
     tr.innerHTML = `
@@ -2096,6 +2077,13 @@ function initApp() {
     
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('mainContent').style.display = 'block';
+    
+    // ✅ 메모 캐시 초기 로드
+    const memos = JSON.parse(localStorage.getItem('carMemos') || '{}');
+    if (Object.keys(memos).length === 0) {
+      localStorage.setItem('carMemos', JSON.stringify({}));
+    }
+    
     fetchData();
     if (refreshInterval) clearInterval(refreshInterval);
     refreshInterval = setInterval(fetchData, 5000);
