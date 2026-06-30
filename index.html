@@ -898,6 +898,7 @@ let currentBalance = 0;
 let allCarsData = [];
 let refreshInterval = null;
 let parkingData = null;
+let prevCarsData = []; // ✅ 이전 데이터 저장용
 
 // ============================================================
 // 💾 저장된 로그인 정보
@@ -1112,9 +1113,6 @@ async function refreshBalance(showAlert = false) {
       currentBalance = balance;
       localStorage.setItem(BALANCE_KEY, balance.toString());
       updateBalanceDisplay(balance);
-      if (balance < THRESHOLD_AMOUNT) {
-        showToast('⚠️ 계정 잔액 부족', `현재 잔여 금액이 ${balance.toLocaleString()}원 입니다.`, 'warning');
-      }
     }
   } catch (e) {
     console.warn('⚠️ 잔액 갱신 실패:', e);
@@ -1694,14 +1692,13 @@ function showCarDetailModal(data, memoData) {
       const idno = item.idno || '';
       const accountNo = item.account_no || '';
       
-      // ✅ 내 계정(oasis_g)으로 등록한 것만 삭제 가능
       const canDelete = accountNo === 'oasis_g';
       
       discountHtml += `
         <div class="discount-item">
           <span>${discountName} (${dcTime})${!canDelete ? ' 🔒' : ''}</span>
           <button class="del-btn" onclick="handleDeleteDiscount('${tckttrnsId}', '${idno}', '${accountNo}')" ${!canDelete ? 'disabled style="background:#94a3b8;cursor:not-allowed;"' : ''}>
-            ${canDelete ? '삭제' : '삭제'}
+            ${canDelete ? '삭제' : '삭제불가'}
           </button>
         </div>
       `;
@@ -1713,6 +1710,21 @@ function showCarDetailModal(data, memoData) {
   const memoText = memoData ? memoData.memo : '';
   const updatedAt = memoData ? memoData.updatedAt : '';
   const timeDisplay = updatedAt ? new Date(updatedAt).toLocaleString() : '';
+
+  // ✅ 남은 시간 계산
+  const totalMinutesWithGrace = calculateFinalParkingTime(data.originalTime);
+  const roundedMinutes = Math.ceil(totalMinutesWithGrace / 30) * 30;
+  const remainingMinutes = roundedMinutes - data.existingMinutes;
+  
+  // ✅ 우리 계정 등록 여부
+  const hasOasisRegistration = data.parkVisitCar?.some((item) => {
+    const account = item.account_no || '';
+    const name = item.name || '';
+    return account.includes('oasis') || name.includes('oasis');
+  });
+
+  // ✅ 등록 버튼 활성화 조건: 남은 시간이 있으면 등록 가능
+  const canRegister = remainingMinutes > 0;
 
   body.innerHTML = `
     <div style="text-align:center; margin-bottom:16px;">
@@ -1749,15 +1761,20 @@ function showCarDetailModal(data, memoData) {
     </div>
   `;
 
-  if (hasDiscount) {
+  // ✅ 등록 버튼 상태: 남은 시간에 따라 결정
+  if (canRegister) {
     footer.innerHTML = `
       <button class="btn-close" onclick="closeCarDetailModal()" style="order:1;">닫기</button>
-      <button class="btn-register" disabled style="order:2;">등록</button>
+      <button class="btn-register" onclick="handleRegister()" style="order:2;">
+        ${hasOasisRegistration ? '추가 등록' : '등록'}
+      </button>
     `;
   } else {
     footer.innerHTML = `
       <button class="btn-close" onclick="closeCarDetailModal()" style="order:1;">닫기</button>
-      <button class="btn-register" onclick="handleRegister()" style="order:2;">등록</button>
+      <button class="btn-register" disabled style="order:2;">
+        ${hasOasisRegistration ? '✅ 등록됨' : '⏰ 시간 만료'}
+      </button>
     `;
   }
 
@@ -1883,7 +1900,7 @@ async function handleDeleteDiscount(tckttrns_id, idno, accountNo) {
 }
 
 // ============================================================
-// 📝 주차등록
+// 📝 주차등록 (수정: 남은 시간 기준으로 등록 가능 여부 판단)
 // ============================================================
 async function handleRegister() {
   if (!parkingData) {
@@ -1891,23 +1908,27 @@ async function handleRegister() {
     return;
   }
 
+  // 남은 시간 계산
+  const totalMinutesWithGrace = calculateFinalParkingTime(parkingData.originalTime);
+  const roundedMinutes = Math.ceil(totalMinutesWithGrace / 30) * 30;
+  const remainingMinutes = roundedMinutes - parkingData.existingMinutes;
+
+  // ✅ 우리 계정 등록 여부 확인
   const hasOasisRegistration = parkingData.parkVisitCar?.some((item) => {
     const account = item.account_no || '';
     const name = item.name || '';
     return account.includes('oasis') || name.includes('oasis');
   });
 
-  if (hasOasisRegistration) {
+  // ✅ 이미 등록되어 있고, 남은 시간이 없으면 등록 불가
+  if (hasOasisRegistration && remainingMinutes <= 0) {
     showToast('⚠️ 안내', '이미 등록된 차량입니다', 'warning');
     return;
   }
 
-  const totalMinutesWithGrace = calculateFinalParkingTime(parkingData.originalTime);
-  const roundedMinutes = Math.ceil(totalMinutesWithGrace / 30) * 30;
-  const remainingMinutes = roundedMinutes - parkingData.existingMinutes;
-
+  // 남은 시간이 0 이하이면 등록 불필요
   if (remainingMinutes <= 0) {
-    showToast('✅ 주차 등록 완료','success');
+    showToast('✅ 주차 등록 완료', '30분 내로 출차 해주세요', 'success');
     closeCarDetailModal();
     fetchData();
     return;
@@ -1964,11 +1985,11 @@ async function handleRegister() {
 
     if (baseTime > 600) {
       const extraMinutes = baseTime - 600;
-      showToast('⚠️ 안내', '10시간 초과!' , 'danger');
+      showToast('⚠️ 안내', '10시간 초과!', 'danger');
     } else if (remainTime <= 30 && remainTime > 0) {
-      showToast('✅ 안내', '주차 등록 완료' , 'success');
+      showToast('✅ 안내', '주차 등록 완료', 'success');
     } else {
-      showToast('✅ 안내', '주차 등록 완료' , 'success');
+      showToast('✅ 안내', '주차 등록 완료', 'success');
     }
 
     fetchData();
@@ -1982,7 +2003,7 @@ async function handleRegister() {
 }
 
 // ============================================================
-// 📊 데이터 가져오기
+// 📊 데이터 가져오기 (새로운 차량 추가 시 잔액 알림 체크)
 // ============================================================
 async function fetchData() {
   try {
@@ -2158,7 +2179,18 @@ async function fetchData() {
       }
     }
 
+    // ✅ 새로운 차량이 추가되었는지 확인 (잔액 알림용)
+    const prevCarSet = new Set(prevCarsData.map(c => c.carNo));
+    const currentCarSet = new Set(detailedCars.map(c => c.carNo));
+    const hasNewCar = [...currentCarSet].some(carNo => !prevCarSet.has(carNo));
+
     allCarsData = detailedCars;
+    prevCarsData = detailedCars; // ✅ 이전 데이터 업데이트
+
+    // ✅ 새로운 차량이 추가되었고, 잔액이 부족하면 알림
+    if (hasNewCar && currentBalance < THRESHOLD_AMOUNT && currentBalance > 0) {
+      showToast('⚠️ 계정 잔액 부족', `현재 잔여 금액이 ${currentBalance.toLocaleString()}원 입니다. (임계값: ${THRESHOLD_AMOUNT.toLocaleString()}원)`, 'warning');
+    }
 
     detailedCars.sort((a, b) => {
       if (a.paidStat === '10' && b.paidStat !== '10') return 1;
@@ -2244,6 +2276,7 @@ function renderTable(data) {
     tbody.appendChild(tr);
   });
 }  
+
 function showDiscountDetails(carNo) {
   const car = allCarsData.find(c => c.carNo === carNo);
   if (!car || !car.discountDetails || car.discountDetails.length === 0) {
@@ -2355,6 +2388,5 @@ window.closeThresholdModal = closeThresholdModal;
 window.saveThreshold = saveThreshold;
 window.refreshBalance = refreshBalance;
 </script>
-
 </body>
 </html>
