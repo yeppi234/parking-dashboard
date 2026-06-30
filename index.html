@@ -2189,7 +2189,7 @@ async function fetchData() {
 
     // ✅ 새로운 차량이 추가되었고, 잔액이 부족하면 알림
     if (hasNewCar && currentBalance < THRESHOLD_AMOUNT && currentBalance > 0) {
-      showToast('⚠️ 계정 잔액 부족', `현재 잔여 금액이 ${currentBalance.toLocaleString()}원 입니다. (임계값: ${THRESHOLD_AMOUNT.toLocaleString()}원)`, 'warning');
+      showToast('⚠️ 계정 잔액 부족', `현재 잔여 금액이 ${currentBalance.toLocaleString()}원 입니다`, 'warning');
     }
 
     detailedCars.sort((a, b) => {
