@@ -1698,7 +1698,7 @@ function showCarDetailModal(data, memoData) {
         <div class="discount-item">
           <span>${discountName} (${dcTime})${!canDelete ? ' 🔒' : ''}</span>
           <button class="del-btn" onclick="handleDeleteDiscount('${tckttrnsId}', '${idno}', '${accountNo}')" ${!canDelete ? 'disabled style="background:#94a3b8;cursor:not-allowed;"' : ''}>
-            ${canDelete ? '삭제' : '삭제불가'}
+            ${canDelete ? '삭제' : '삭제'}
           </button>
         </div>
       `;
