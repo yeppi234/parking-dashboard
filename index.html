@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html>
 <head>
@@ -141,6 +142,9 @@
       align-items: center;
       flex-wrap: wrap;
       gap: 8px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
     .header h1 { font-size: 20px; color: #1a1a2e; }
     .header .time { color: #666; font-size: 13px; }
@@ -296,6 +300,13 @@
       overflow-x: auto;
       padding: 0 4px;
       -webkit-overflow-scrolling: touch;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    .table-scroll thead {
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
     table {
       width: 100%;
@@ -313,6 +324,7 @@
       font-weight: 600;
       color: #475569;
       white-space: nowrap;
+      background: #f8fafc;
     }
     td {
       padding: 8px 10px;
@@ -840,7 +852,7 @@
   <!-- ===== 차량 검색 ===== -->
   <div class="search-section">
     <div class="search-row">
-      <input type="text" id="searchInput" placeholder="차량번호를 입력하세요 (예: 1234)" maxlength="10" onkeypress="if(event.key==='Enter') handleSearch()">
+      <input type="text" id="searchInput" placeholder="차량번호를 입력하세요 (예: 1234)" maxlength="10" onkeypress="if(event.key==='Enter') handleSearch()" autofocus>
       <button class="search-btn" id="searchBtn" onclick="handleSearch()">🔍 조회</button>
     </div>
   </div>
@@ -1047,6 +1059,8 @@ async function handleLogin() {
       loginBtn.disabled = false;
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('mainContent').style.display = 'block';
+      
+      document.getElementById('searchInput').focus();
       
       fetchData();
       if (refreshInterval) clearInterval(refreshInterval);
@@ -1324,6 +1338,51 @@ async function loadAllParkingTimes() {
   } catch (e) {
     console.warn('⚠️ 주차시간 로드 실패:', e);
     return {};
+  }
+}
+
+// ============================================================
+// ⚙️ 임계값 설정 (Vercel KV)
+// ============================================================
+async function loadThresholdFromServer() {
+  try {
+    const response = await fetch(`${PROXY_BASE}/threshold`, {
+      credentials: 'include'
+    });
+    const result = await response.json();
+    if (result.amount) {
+      THRESHOLD_AMOUNT = result.amount;
+      localStorage.setItem(STORAGE_KEY, result.amount);
+      console.log('📌 서버에서 임계값 로드:', THRESHOLD_AMOUNT);
+      document.getElementById('thresholdInput').value = THRESHOLD_AMOUNT;
+    }
+  } catch (e) {
+    console.warn('⚠️ 임계값 서버 로드 실패:', e);
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      THRESHOLD_AMOUNT = parseInt(saved);
+      document.getElementById('thresholdInput').value = THRESHOLD_AMOUNT;
+    }
+  }
+}
+
+async function saveThresholdToServer(amount) {
+  try {
+    const response = await fetch(`${PROXY_BASE}/threshold`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ amount: amount })
+    });
+    const result = await response.json();
+    if (result.success) {
+      localStorage.setItem(STORAGE_KEY, amount);
+      return true;
+    }
+    return false;
+  } catch (e) {
+    console.error('❌ 임계값 서버 저장 실패:', e);
+    return false;
   }
 }
 
@@ -1626,6 +1685,7 @@ function showCarDetailModal(data, memoData) {
 
   const hasDiscount = data.parkVisitCar && data.parkVisitCar.length > 0;
 
+  // ✅ 할인내역 리스트 (내가 등록한 것만 삭제 가능)
   let discountHtml = '';
   if (hasDiscount) {
     data.parkVisitCar.forEach((item) => {
@@ -1633,11 +1693,16 @@ function showCarDetailModal(data, memoData) {
       const dcTime = item.dc_time || '0분';
       const tckttrnsId = item.tckttrns_id || '';
       const idno = item.idno || '';
+      const accountNo = item.account_no || '';
+      
+      // ✅ 내 계정(oasis_g)으로 등록한 것만 삭제 가능
+      const canDelete = accountNo === 'oasis_g';
+      
       discountHtml += `
         <div class="discount-item">
-          <span>${discountName} (${dcTime})</span>
-          <button class="del-btn" onclick="handleDeleteDiscount('${tckttrnsId}', '${idno}')" ${!tckttrnsId || !idno ? 'disabled' : ''}>
-            삭제
+          <span>${discountName} (${dcTime})${!canDelete ? ' 🔒' : ''}</span>
+          <button class="del-btn" onclick="handleDeleteDiscount('${tckttrnsId}', '${idno}', '${accountNo}')" ${!canDelete ? 'disabled style="background:#94a3b8;cursor:not-allowed;"' : ''}>
+            ${canDelete ? '삭제' : '삭제불가'}
           </button>
         </div>
       `;
@@ -1716,17 +1781,23 @@ async function saveMemo(carNo) {
     return;
   }
   
+  document.getElementById('loadingOverlay').classList.add('show');
+  document.getElementById('loadingText').textContent = '메모 저장 중...';
+  
   const success = await saveCarMemo(carNo, memo);
+  
   if (success) {
     const memos = JSON.parse(localStorage.getItem('carMemos') || '{}');
     memos[carNo] = { memo, updatedAt: new Date().toISOString() };
     localStorage.setItem('carMemos', JSON.stringify(memos));
     
+    document.getElementById('loadingOverlay').classList.remove('show');
     showToast('✅ 저장 완료', '차량 메모가 저장되었습니다.', 'success');
     const memoData = await getCarMemo(carNo);
     showCarDetailModal(parkingData, memoData);
     fetchData();
   } else {
+    document.getElementById('loadingOverlay').classList.remove('show');
     showToast('❌ 저장 실패', '메모 저장 중 오류가 발생했습니다.', 'danger');
   }
 }
@@ -1734,25 +1805,37 @@ async function saveMemo(carNo) {
 async function deleteMemo(carNo) {
   if (!confirm('이 차량의 메모를 삭제하시겠습니까?')) return;
   
+  document.getElementById('loadingOverlay').classList.add('show');
+  document.getElementById('loadingText').textContent = '메모 삭제 중...';
+  
   const success = await deleteCarMemo(carNo);
+  
   if (success) {
     const memos = JSON.parse(localStorage.getItem('carMemos') || '{}');
     delete memos[carNo];
     localStorage.setItem('carMemos', JSON.stringify(memos));
     
+    document.getElementById('loadingOverlay').classList.remove('show');
     showToast('✅ 삭제 완료', '차량 메모가 삭제되었습니다.', 'success');
     const memoData = await getCarMemo(carNo);
     showCarDetailModal(parkingData, memoData);
     fetchData();
   } else {
+    document.getElementById('loadingOverlay').classList.remove('show');
     showToast('❌ 삭제 실패', '메모 삭제 중 오류가 발생했습니다.', 'danger');
   }
 }
 
 // ============================================================
-// 🗑️ 개별 할인내역 삭제
+// 🗑️ 개별 할인내역 삭제 (계정 체크 추가)
 // ============================================================
-async function handleDeleteDiscount(tckttrns_id, idno) {
+async function handleDeleteDiscount(tckttrns_id, idno, accountNo) {
+  // ✅ 내가 등록한 것인지 확인
+  if (accountNo && accountNo !== 'oasis_g') {
+    showToast('⚠️ 안내', '다른 사용자가 등록한 할인내역은 삭제할 수 없습니다.', 'warning');
+    return;
+  }
+  
   if (!tckttrns_id || !idno) {
     showToast('⚠️ 오류', '삭제할 할인 정보가 없습니다.', 'warning');
     return;
@@ -2231,6 +2314,8 @@ function initApp() {
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('mainContent').style.display = 'block';
     
+    document.getElementById('searchInput').focus();
+    
     const memos = JSON.parse(localStorage.getItem('carMemos') || '{}');
     if (Object.keys(memos).length === 0) {
       localStorage.setItem('carMemos', JSON.stringify({}));
@@ -2271,5 +2356,7 @@ window.closeThresholdModal = closeThresholdModal;
 window.saveThreshold = saveThreshold;
 window.refreshBalance = refreshBalance;
 </script>
+
 </body>
 </html>
+```
